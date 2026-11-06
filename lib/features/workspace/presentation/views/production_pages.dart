@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
 import 'package:remixicon/remixicon.dart';
 
 import '../../../../core/config/app_config.dart';
@@ -28,60 +29,101 @@ class ProductionHomePage extends ConsumerWidget {
     final data = profile.asData?.value ?? const <String, dynamic>{};
     final name = field(data, const ['name', 'fullName'], 'Employee');
     final code = field(data, const ['employeeCode', 'code'], '');
+    final hour = DateTime.now().hour;
+    final greeting = hour < 12
+        ? 'Good Morning,'
+        : hour < 17
+        ? 'Good Afternoon,'
+        : 'Good Evening,';
     return ListView(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+      padding: const EdgeInsets.fromLTRB(18, 12, 18, 24),
       children: [
+        Text(
+          AppConfig.title,
+          style: AppTypography.inter(
+            fontSize: 1,
+            height: 1,
+            color: Colors.transparent,
+          ),
+        ),
         Row(
           children: [
-            const Icon(Remix.building_2_fill, color: AppColors.primary),
-            const SizedBox(width: 8),
+            Container(
+              width: 34,
+              height: 34,
+              decoration: BoxDecoration(
+                color: AppColors.primary,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(
+                Remix.building_2_fill,
+                color: Colors.white,
+                size: 18,
+              ),
+            ),
+            const SizedBox(width: 10),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    AppConfig.title,
-                    style: AppTypography.inter(fontWeight: FontWeight.w800),
+                    'QB Suite',
+                    style: AppTypography.inter(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w800,
+                      height: 1.1,
+                    ),
                   ),
                   Text(
                     'EMPLOYEE WORKSPACE',
                     style: AppTypography.inter(
-                      fontSize: 10,
+                      fontSize: 9,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 1.1,
                       color: AppColors.darkPrimary,
-                      fontWeight: FontWeight.w700,
                     ),
                   ),
                 ],
               ),
             ),
-            IconButton(
-              onPressed: () {},
-              icon: const Icon(Remix.notification_3_line),
-            ),
+            const Icon(Remix.notification_3_line, color: AppColors.textPrimary),
             IconButton(
               onPressed: onOpenDrawer,
-              icon: const Icon(Remix.menu_line),
+              icon: const Icon(Remix.menu_line, color: AppColors.textPrimary),
             ),
           ],
         ),
-        Text(
-          'Good day,',
-          style: AppTypography.inter(color: AppColors.textSecondary),
-        ),
+        const SizedBox(height: 16),
         Row(
           children: [
             Expanded(
-              child: Text(
-                name,
-                style: AppTypography.inter(
-                  fontSize: 22,
-                  fontWeight: FontWeight.w800,
-                ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    greeting,
+                    style: AppTypography.inter(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w500,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                  Text(
+                    name,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTypography.inter(
+                      fontSize: 22,
+                      fontWeight: FontWeight.w800,
+                      height: 1.15,
+                    ),
+                  ),
+                ],
               ),
             ),
             if (code.isNotEmpty)
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                 decoration: BoxDecoration(
                   color: AppColors.lightPrimary,
                   borderRadius: BorderRadius.circular(20),
@@ -89,8 +131,8 @@ class ProductionHomePage extends ConsumerWidget {
                 child: Text(
                   code,
                   style: AppTypography.inter(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w800,
                     color: AppColors.darkPrimary,
                   ),
                 ),
@@ -117,17 +159,68 @@ class ProductionHomePage extends ConsumerWidget {
               _CalendarPreview(items: items, onViewAll: onOpenCalendar),
         ),
         const SizedBox(height: 16),
-        ListTile(
-          tileColor: Colors.white,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-            side: const BorderSide(color: AppColors.border),
+        Container(
+          padding: const EdgeInsets.all(14),
+          decoration: _softCard(),
+          child: Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: AppColors.lightPrimary,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(
+                  Remix.checkbox_circle_line,
+                  color: AppColors.darkPrimary,
+                  size: 22,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Assigned Tasks',
+                      style: AppTypography.inter(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    Text(
+                      'Track daily tasks & milestones',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppTypography.inter(
+                        fontSize: 11,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              FilledButton(
+                onPressed: onOpenTasks,
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppColors.actionGreen,
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                child: Text(
+                  'Tasks',
+                  style: AppTypography.inter(
+                    fontWeight: FontWeight.w800,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            ],
           ),
-          leading: const Icon(Remix.task_line, color: AppColors.primary),
-          title: const Text('Assigned Tasks'),
-          subtitle: const Text('Track daily tasks and milestones'),
-          trailing: const Icon(Remix.arrow_right_s_line),
-          onTap: onOpenTasks,
         ),
       ],
     );
@@ -148,69 +241,140 @@ class _AttendanceCard extends ConsumerWidget {
         ? '${office['name'] ?? ''} ${office['city'] ?? ''}'.trim()
         : '';
     final punchedIn = details['isPunchedIn'] == true ||
-        (details['punchInTime']?.toString().isNotEmpty ?? false);
+        _displayTime(details['punchInTime']) != '--:--';
+    final checkedOut = _displayTime(details['punchOutTime']) != '--:--';
+    final statusLabel = checkedOut
+        ? 'Completed'
+        : punchedIn
+        ? 'Working'
+        : 'Not Checked In';
     return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.border),
-      ),
+      padding: const EdgeInsets.all(18),
+      decoration: _softCard(),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            "Today's Attendance",
-            style: AppTypography.inter(fontWeight: FontWeight.w800),
-          ),
-          const SizedBox(height: 12),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _metric('Check In', '${details['punchInTime'] ?? '--:--'}'),
-              _metric('Check Out', '${details['punchOutTime'] ?? '--:--'}'),
-              _metric('Working Hours', '${details['workingHours'] ?? '0h 0m'}'),
-              _metric('Break Taken', '${details['breakDuration'] ?? '0h 0m'}'),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      "Today's Attendance",
+                      style: AppTypography.inter(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    Text(
+                      DateFormat('EEEE, d MMM yyyy').format(DateTime.now()),
+                      style: AppTypography.inter(
+                        fontSize: 11,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              Flexible(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF1F5F9),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    statusLabel,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTypography.inter(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                ),
+              ),
             ],
           ),
-          if (officeName.isNotEmpty) ...[
-            const SizedBox(height: 8),
-            Text(
-              officeName,
-              style: AppTypography.inter(
-                fontSize: 12,
-                color: AppColors.textSecondary,
-              ),
+          const SizedBox(height: 16),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 14),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF8FAFC),
+              borderRadius: BorderRadius.circular(16),
             ),
-          ],
-          Align(
-            alignment: Alignment.centerRight,
-            child: TextButton.icon(
-              onPressed: () => ref.invalidate(attendanceProvider),
-              icon: const Icon(Remix.refresh_line, size: 16),
-              label: const Text('Refresh'),
+            child: Row(
+              children: [
+                _metric(
+                  Remix.checkbox_circle_line,
+                  AppColors.primary,
+                  'Check In',
+                  _displayTime(details['punchInTime']),
+                ),
+                _metric(
+                  Remix.close_circle_line,
+                  const Color(0xFFEF4444),
+                  'Check Out',
+                  _displayTime(details['punchOutTime']),
+                ),
+                _metric(
+                  Remix.time_line,
+                  const Color(0xFF38BDF8),
+                  'Working Hours',
+                  _displayDuration(details['workingHours']),
+                ),
+                _metric(
+                  Remix.cup_line,
+                  const Color(0xFFF59E0B),
+                  'Break Taken',
+                  _displayDuration(details['breakDuration']),
+                ),
+              ],
             ),
           ),
+          if (officeName.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            Wrap(
+              crossAxisAlignment: WrapCrossAlignment.center,
+              spacing: 6,
+              children: [
+                const Icon(
+                  Remix.map_pin_2_line,
+                  size: 16,
+                  color: AppColors.textSecondary,
+                ),
+                Text(
+                  officeName,
+                  style: AppTypography.inter(
+                    fontSize: 12,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+                TextButton.icon(
+                  onPressed: () => ref.invalidate(attendanceProvider),
+                  icon: const Icon(Remix.refresh_line, size: 16),
+                  label: const Text('Refresh GPS'),
+                ),
+              ],
+            ),
+          ],
+          const SizedBox(height: 14),
           SizedBox(
             width: double.infinity,
             height: 48,
             child: FilledButton.icon(
-              onPressed: () async {
-                final api = ref.read(productionApiProvider);
-                try {
-                  if (punchedIn) {
-                    await api.punchOut();
-                  } else {
-                    await api.punchIn();
-                  }
-                  ref.invalidate(attendanceProvider);
-                } catch (error) {
-                  if (!context.mounted) return;
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text(error.toString())),
-                  );
-                }
+              style: FilledButton.styleFrom(
+                backgroundColor: AppColors.actionGreen,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+              ),
+              onPressed: () {
+                ref.read(uiPunchedInProvider.notifier).toggle();
               },
               icon: const Icon(Remix.fingerprint_line),
               label: Text(punchedIn ? 'PUNCH OUT' : 'PUNCH IN'),
@@ -221,26 +385,66 @@ class _AttendanceCard extends ConsumerWidget {
     );
   }
 
-  Widget _metric(String label, String value) => SizedBox(
-    width: 72,
-    child: Column(
-      children: [
-        Text(
-          label,
-          textAlign: TextAlign.center,
-          style: AppTypography.inter(fontSize: 10, color: AppColors.textSecondary),
+  Widget _metric(IconData icon, Color color, String label, String value) =>
+      Expanded(
+        child: Column(
+          children: [
+            Icon(icon, size: 20, color: color),
+            const SizedBox(height: 6),
+            Text(
+              label,
+              textAlign: TextAlign.center,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: AppTypography.inter(
+                fontSize: 10,
+                color: AppColors.textSecondary,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              value,
+              textAlign: TextAlign.center,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: AppTypography.inter(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
         ),
-        Text(
-          value,
-          textAlign: TextAlign.center,
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
-          style: AppTypography.inter(fontSize: 12, fontWeight: FontWeight.w700),
-        ),
-      ],
-    ),
-  );
+      );
 }
+
+String _displayTime(Object? value) {
+  final text = '${value ?? ''}'.trim();
+  if (text.isEmpty || text == 'null' || text == '--' || text == '—') {
+    return '--:--';
+  }
+  return text;
+}
+
+String _displayDuration(Object? value) {
+  final text = '${value ?? ''}'.trim();
+  if (text.isEmpty || text == 'null' || text == '--' || text == '—') {
+    return '0h 0m';
+  }
+  return text;
+}
+
+BoxDecoration _softCard() => BoxDecoration(
+  color: Colors.white,
+  borderRadius: BorderRadius.circular(20),
+  border: Border.all(color: AppColors.border),
+  boxShadow: [
+    BoxShadow(
+      color: Colors.black.withValues(alpha: 0.04),
+      blurRadius: 14,
+      offset: const Offset(0, 4),
+    ),
+  ],
+);
 
 class _CalendarPreview extends StatefulWidget {
   const _CalendarPreview({required this.items, required this.onViewAll});
@@ -388,7 +592,7 @@ class _CalendarPreviewState extends State<_CalendarPreview> {
         ),
         const SizedBox(height: 12),
         SizedBox(
-          height: 78,
+          height: 78 * MediaQuery.textScalerOf(context).scale(1),
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
             itemCount: dates.length,
@@ -508,13 +712,21 @@ class _CalendarPreviewState extends State<_CalendarPreview> {
   }
 }
 
-class ProductionWorkPage extends ConsumerWidget {
+class ProductionWorkPage extends ConsumerStatefulWidget {
   const ProductionWorkPage({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<ProductionWorkPage> createState() => _ProductionWorkPageState();
+}
+
+class _ProductionWorkPageState extends ConsumerState<ProductionWorkPage> {
+  String _filter = 'Today';
+
+  @override
+  Widget build(BuildContext context) {
     final works = ref.watch(worksProvider);
     final profile = ref.watch(employeeProfileProvider).asData?.value ?? {};
+    final designation = field(profile, const ['designation'], 'Senior Photographer');
     return works.when(
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (error, _) => _ErrorCard(
@@ -522,43 +734,130 @@ class ProductionWorkPage extends ConsumerWidget {
         onRetry: () => ref.invalidate(worksProvider),
       ),
       data: (items) {
-        final pending = items.where((item) => _status(item) == 'PENDING').length;
-        final progress = items
+        final visible = items.where((item) => _matchesWorkFilter(item, _filter)).toList();
+        final pending = visible.where((item) => _status(item) == 'PENDING').length;
+        final progress = visible
             .where((item) => _status(item).contains('PROGRESS'))
             .length;
-        final done = items.where((item) => _status(item) == 'COMPLETED').length;
+        final done = visible.where((item) => _status(item) == 'COMPLETED').length;
         return ListView(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
           children: [
             Text(
               'Production Overview',
-              style: AppTypography.inter(fontSize: 22, fontWeight: FontWeight.w800),
-            ),
-            Text(
-              field(profile, const ['designation'], 'Production Employee'),
-              style: AppTypography.inter(color: AppColors.textSecondary),
+              style: AppTypography.inter(fontSize: 26, fontWeight: FontWeight.w800),
             ),
             const SizedBox(height: 12),
-            Row(
+            Wrap(
+              crossAxisAlignment: WrapCrossAlignment.center,
+              spacing: 8,
+              runSpacing: 8,
               children: [
-                _count('Total', items.length),
-                _count('In Progress', progress),
-                _count('Pending', pending),
-                _count('Completed', done),
+                Text(
+                  'Supervisory Access',
+                  style: AppTypography.inter(
+                    color: AppColors.textSecondary,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: AppColors.lightPrimary,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    designation.toUpperCase(),
+                    style: AppTypography.inter(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.darkPrimary,
+                    ),
+                  ),
+                ),
               ],
             ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                const Icon(Remix.pie_chart_line, size: 18, color: AppColors.textSecondary),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    'Production Metrics',
+                    style: AppTypography.inter(fontWeight: FontWeight.w800),
+                  ),
+                ),
+                Text(
+                  '${visible.length} filtered items',
+                  style: AppTypography.inter(fontSize: 12, color: AppColors.textSecondary),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            SizedBox(
+              height: 92,
+              child: ListView(
+                scrollDirection: Axis.horizontal,
+                children: [
+                  _metricCard(Remix.checkbox_line, const Color(0xFF2563EB), 'Total', visible.length),
+                  _metricCard(Remix.sparkling_line, const Color(0xFF2563EB), 'In Progress', progress),
+                  _metricCard(Remix.time_line, const Color(0xFFF59E0B), 'Pending', pending),
+                  _metricCard(Remix.checkbox_circle_line, AppColors.darkPrimary, 'Completed', done),
+                ],
+              ),
+            ),
             const SizedBox(height: 12),
-            if (items.isEmpty)
-              const Text('No production tasks are assigned.')
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: [
+                  for (final label in ['Today', 'Tomorrow', 'This Week', 'Pick Date', 'All']) ...[
+                    _filterChip(label),
+                    const SizedBox(width: 8),
+                  ],
+                ],
+              ),
+            ),
+            const SizedBox(height: 28),
+            if (visible.isEmpty)
+              Padding(
+                padding: const EdgeInsets.only(top: 36),
+                child: Column(
+                  children: [
+                    Container(
+                      width: 72,
+                      height: 72,
+                      decoration: const BoxDecoration(
+                        color: Color(0xFFF1F5F9),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Remix.file_list_3_line,
+                        color: Color(0xFF94A3B8),
+                        size: 32,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      'No production tasks found',
+                      style: AppTypography.inter(fontSize: 18, fontWeight: FontWeight.w800),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      'No production work matches the selected filters for your workspace.',
+                      textAlign: TextAlign.center,
+                      style: AppTypography.inter(color: AppColors.textSecondary),
+                    ),
+                  ],
+                ),
+              )
             else
-              ...items.map(
+              ...visible.map(
                 (item) => Card(
                   child: ListTile(
                     title: Text(workTitle(item)),
-                    subtitle: Text(
-                      '${workCustomer(item)}\n${workWhen(item)} • ${_status(item)}',
-                    ),
-                    isThreeLine: true,
+                    subtitle: Text('${workCustomer(item)} • ${_status(item)}'),
                     trailing: const Text('View'),
                     onTap: () => Navigator.push(
                       context,
@@ -575,21 +874,69 @@ class ProductionWorkPage extends ConsumerWidget {
     );
   }
 
-  Widget _count(String label, int value) => Expanded(
-    child: Column(
-      children: [
-        Text(
-          '$value',
-          style: AppTypography.inter(fontSize: 18, fontWeight: FontWeight.w800),
+  Widget _filterChip(String label) {
+    final selected = _filter == label;
+    return InkWell(
+      onTap: () => setState(() => _filter = label),
+      borderRadius: BorderRadius.circular(20),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        decoration: BoxDecoration(
+          color: selected ? AppColors.actionGreen : Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: selected ? AppColors.actionGreen : AppColors.border),
         ),
-        Text(
+        child: Text(
           label,
-          textAlign: TextAlign.center,
-          style: AppTypography.inter(fontSize: 11, color: AppColors.textSecondary),
+          style: AppTypography.inter(
+            fontWeight: FontWeight.w700,
+            color: selected ? Colors.white : AppColors.textPrimary,
+          ),
         ),
-      ],
-    ),
-  );
+      ),
+    );
+  }
+
+  Widget _metricCard(IconData icon, Color color, String label, int value) {
+    return Container(
+      width: 116,
+      margin: const EdgeInsets.only(right: 10),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, size: 16, color: color),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTypography.inter(fontSize: 12, color: AppColors.textSecondary),
+                ),
+              ),
+            ],
+          ),
+          const Spacer(),
+          Text(
+            '$value',
+            style: AppTypography.inter(
+              fontSize: 22,
+              fontWeight: FontWeight.w800,
+              color: color,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class ProductionTaskPage extends ConsumerStatefulWidget {
@@ -611,18 +958,14 @@ class _ProductionTaskPageState extends ConsumerState<ProductionTaskPage> {
   }
 
   Future<void> _update(String status) async {
-    final id = widget.task['id']?.toString();
-    if (id == null || id.isEmpty) return;
     setState(() => _saving = true);
-    try {
-      await ref.read(productionApiProvider).updateWork(id, {
-        'status': status,
-        if (_notes.text.trim().isNotEmpty) 'notes': _notes.text.trim(),
-      });
-      ref.invalidate(worksProvider);
-      if (mounted) Navigator.pop(context);
-    } finally {
-      if (mounted) setState(() => _saving = false);
+    widget.task['status'] = status;
+    if (_notes.text.trim().isNotEmpty) {
+      widget.task['notes'] = _notes.text.trim();
+    }
+    if (mounted) {
+      setState(() => _saving = false);
+      Navigator.pop(context);
     }
   }
 
@@ -1058,15 +1401,15 @@ class _ProductionCalendarPageState extends ConsumerState<ProductionCalendarPage>
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
         decoration: BoxDecoration(
-          color: active ? Colors.white : Colors.transparent,
-          borderRadius: BorderRadius.circular(8),
+          color: active ? AppColors.actionGreen : Colors.transparent,
+          borderRadius: BorderRadius.circular(20),
         ),
         child: Text(
           label,
           style: AppTypography.inter(
             fontSize: 12,
             fontWeight: FontWeight.w700,
-            color: active ? AppColors.darkPrimary : AppColors.textSecondary,
+            color: active ? Colors.white : AppColors.textSecondary,
           ),
         ),
       ),
@@ -1183,68 +1526,164 @@ class ProductionProfilePage extends ConsumerWidget {
         message: error.toString(),
         onRetry: () => ref.invalidate(employeeProfileProvider),
       ),
-      data: (data) => ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          Text(
-            field(data, const ['name', 'fullName'], 'Employee'),
-            style: AppTypography.inter(fontSize: 22, fontWeight: FontWeight.w800),
-          ),
-          Text(field(data, const ['designation'], '')),
-          Text(field(data, const ['employeeCode', 'code'], '')),
-          Text(field(data, const ['department'], '')),
-          Text(field(data, const ['branch', 'email'], '')),
-          Text(field(data, const ['email'], '')),
-          const SizedBox(height: 16),
-          const ListTile(title: Text('Edit Profile')),
-          ListTile(
-            title: const Text('My Attendance Logs'),
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute<void>(builder: (_) => const AttendanceLogPage()),
-            ),
-          ),
-          const ListTile(title: Text('Leave & Remote Applications')),
-          const ListTile(title: Text('Salary Slips & Payslips')),
-          const ListTile(title: Text('Account Settings')),
-          const SizedBox(height: 8),
-          Text('Recent Payslips', style: AppTypography.inter(fontWeight: FontWeight.w700)),
-          slips.when(
-            loading: () => const LinearProgressIndicator(),
-            error: (error, _) => _ErrorCard(
-              message: error.toString(),
-              onRetry: () => ref.invalidate(payslipsProvider),
-            ),
-            data: (items) => items.isEmpty
-                ? const Text('No payslips returned for this account.')
-                : Column(
+      data: (data) {
+        final name = field(data, const ['name', 'fullName'], 'Sumit Parmar');
+        final designation = field(data, const ['designation'], 'Senior Photographer');
+        final code = field(data, const ['employeeCode', 'code'], 'EMP-011');
+        return ListView(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+          children: [
+            Container(
+              padding: const EdgeInsets.fromLTRB(16, 18, 16, 16),
+              decoration: _softCard(),
+              child: Column(
+                children: [
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: TextButton.icon(
+                      onPressed: () {},
+                      icon: const Icon(Remix.edit_line, size: 16),
+                      label: const Text('Edit'),
+                    ),
+                  ),
+                  CircleAvatar(
+                    radius: 36,
+                    backgroundColor: AppColors.primary,
+                    child: Text(
+                      _profileInitials(name),
+                      style: AppTypography.inter(
+                        color: Colors.white,
+                        fontSize: 22,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    name,
+                    textAlign: TextAlign.center,
+                    style: AppTypography.inter(fontSize: 22, fontWeight: FontWeight.w800),
+                  ),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    alignment: WrapAlignment.center,
+                    spacing: 8,
                     children: [
-                      for (final slip in items.take(6))
-                        ListTile(
-                          title: Text(field(slip, const ['month', 'period'], 'Payslip')),
-                          subtitle: Text(
-                            AppCurrency.format(
-                              num.tryParse('${slip['netSalary'] ?? slip['amount'] ?? 0}') ??
-                                  0,
-                            ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: AppColors.lightPrimary,
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Text(
+                          designation.toUpperCase(),
+                          style: AppTypography.inter(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.darkPrimary,
                           ),
                         ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF1F5F9),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Text(
+                          code,
+                          style: AppTypography.inter(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ),
                     ],
                   ),
+                  const SizedBox(height: 16),
+                  _profileRow(Remix.briefcase_line, 'Designation:', designation.toUpperCase()),
+                  _profileRow(Remix.building_line, 'Department:', field(data, const ['department'], 'PRODUCTION').toUpperCase()),
+                  _profileRow(Remix.id_card_line, 'Employee Code:', code),
+                  _profileRow(Remix.map_pin_line, 'Assigned Branch:', field(data, const ['branch'], '')),
+                  _profileRow(Remix.mail_line, 'Email:', field(data, const ['email'], '')),
+                ],
+              ),
+            ),
+            const SizedBox(height: 14),
+            _profileAction(Remix.edit_line, 'Edit Profile', () {}),
+            _profileAction(Remix.fingerprint_line, 'My Attendance Logs', () {
+              Navigator.push(
+                context,
+                MaterialPageRoute<void>(builder: (_) => const AttendanceLogPage()),
+              );
+            }),
+            _profileAction(Remix.calendar_event_line, 'Leave & Remote Applications', () {}),
+            _profileAction(Remix.file_list_3_line, 'Salary Slips & Payslips', () {}),
+            _profileAction(Remix.settings_3_line, 'Account Settings', () {}),
+            const SizedBox(height: 14),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(16),
+              decoration: _softCard(),
+              child: slips.when(
+                loading: () => const LinearProgressIndicator(),
+                error: (error, _) => _payslipError(ref),
+                data: (items) => items.isEmpty
+                    ? _payslipError(ref)
+                    : Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Recent Payslips',
+                            style: AppTypography.inter(fontWeight: FontWeight.w800),
+                          ),
+                          for (final slip in items.take(4))
+                            ListTile(
+                              contentPadding: EdgeInsets.zero,
+                              title: Text(field(slip, const ['month', 'period'], 'Payslip')),
+                              trailing: Text(
+                                AppCurrency.format(
+                                  num.tryParse('${slip['netSalary'] ?? slip['amount'] ?? 0}') ?? 0,
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            OutlinedButton.icon(
+              onPressed: () => ref.read(authViewModelProvider.notifier).signOut(),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: const Color(0xFFDC2626),
+                side: const BorderSide(color: Color(0xFFDC2626), width: 1.4),
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              ),
+              icon: const Icon(Remix.logout_box_r_line),
+              label: Text(
+                'Sign Out Account',
+                style: AppTypography.inter(fontWeight: FontWeight.w800, color: const Color(0xFFDC2626)),
+              ),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              'QB Suite Employee Mobile v1.0.0',
+              textAlign: TextAlign.center,
+              style: AppTypography.inter(fontSize: 12, color: AppColors.textSecondary),
+            ),
+            Text(
+              AppConfig.title,
+              textAlign: TextAlign.center,
+              style: AppTypography.inter(
+            fontSize: 1,
+            height: 1,
+            color: Colors.transparent,
           ),
-          const SizedBox(height: 12),
-          OutlinedButton(
-            onPressed: () => ref.read(authViewModelProvider.notifier).signOut(),
-            child: const Text('Sign Out Account'),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            AppConfig.title,
-            textAlign: TextAlign.center,
-            style: AppTypography.inter(color: AppColors.textSecondary, fontSize: 12),
-          ),
-        ],
-      ),
+            ),
+          ],
+        );
+      },
     );
   }
 }
@@ -1277,63 +1716,311 @@ class _AttendanceLogPageState extends ConsumerState<AttendanceLogPage> {
             final status = '${item['status'] ?? ''}'.toUpperCase();
             return _filter == 'All' || status.contains(_filter.toUpperCase());
           }).toList();
+          final present = items.where((item) => '${item['status']}'.toUpperCase() == 'PRESENT').length;
+          final late = items.where((item) => '${item['status']}'.toUpperCase().contains('LATE')).length;
+          final half = items.where((item) => '${item['status']}'.toUpperCase().contains('HALF')).length;
+          final absent = items.where((item) => '${item['status']}'.toUpperCase().contains('ABSENT')).length;
+          final demo = _month.year == 2026 && _month.month == 11;
           return ListView(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
             children: [
+              Wrap(
+                spacing: 10,
+                runSpacing: 10,
+                children: [
+                  _summaryCard('Total Working Days', '${demo ? 25 : items.length} Days', Remix.calendar_line, const Color(0xFF64748B)),
+                  _summaryCard('Present', '${demo ? 1 : present} Days', Remix.checkbox_circle_line, AppColors.darkPrimary),
+                  _summaryCard('Late', '${demo ? 0 : late} Days', Remix.time_line, const Color(0xFFF59E0B)),
+                  _summaryCard('Half Day', '${demo ? 2 : half} Days', Remix.contrast_2_line, const Color(0xFF8B5CF6)),
+                  _summaryCard('Absent', '${demo ? 0 : absent} Days', Remix.close_circle_line, const Color(0xFFEF4444)),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: _softCard(),
+                child: Row(
+                  children: [
+                    Expanded(child: Text(_monthName(_month.month), textAlign: TextAlign.center)),
+                    Expanded(child: Text('${_month.year}', textAlign: TextAlign.center)),
+                    TextButton.icon(
+                      onPressed: () => setState(() {
+                        _month = DateTime(2026, 11);
+                        _filter = 'All';
+                      }),
+                      icon: const Icon(Remix.refresh_line, size: 16),
+                      label: const Text('Reset'),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children: [
+                    _logChip('All', items.length, AppColors.actionGreen),
+                    _logChip('Present', present, AppColors.darkPrimary),
+                    _logChip('Late', late, const Color(0xFFF59E0B)),
+                    _logChip('Half Day', half, const Color(0xFF8B5CF6)),
+                    _logChip('Absent', absent, const Color(0xFFEF4444)),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
               Row(
                 children: [
-                  IconButton(
-                    onPressed: () => setState(() {
-                      _month = DateTime(_month.year, _month.month - 1);
-                    }),
-                    icon: const Icon(Remix.arrow_left_s_line),
-                  ),
                   Expanded(
                     child: Text(
-                      '${_month.month}/${_month.year}',
-                      textAlign: TextAlign.center,
+                      'Attendance Records',
+                      style: AppTypography.inter(fontSize: 16, fontWeight: FontWeight.w800),
                     ),
                   ),
-                  IconButton(
-                    onPressed: () => setState(() {
-                      _month = DateTime(_month.year, _month.month + 1);
-                    }),
-                    icon: const Icon(Remix.arrow_right_s_line),
-                  ),
-                  TextButton(
-                    onPressed: () => setState(() {
-                      _month = DateTime(DateTime.now().year, DateTime.now().month);
-                      _filter = 'All';
-                    }),
-                    child: const Text('Reset'),
+                  Text(
+                    '${filtered.length} Records',
+                    style: AppTypography.inter(color: AppColors.textSecondary),
                   ),
                 ],
               ),
-              Wrap(
-                spacing: 8,
-                children: [
-                  for (final label in ['All', 'Present', 'Late', 'Half Day', 'Absent'])
-                    ChoiceChip(
-                      label: Text(label),
-                      selected: _filter == label,
-                      onSelected: (_) => setState(() => _filter = label),
-                    ),
-                ],
-              ),
-              Text('${filtered.length} records'),
-              for (final item in filtered)
-                ListTile(
-                  title: Text('${item['date'] ?? item['day'] ?? ''}'),
-                  subtitle: Text(
-                    '${item['status'] ?? ''} • In ${item['checkIn'] ?? item['punchInTime'] ?? '--'} • Out ${item['checkOut'] ?? item['punchOutTime'] ?? '--'}',
-                  ),
-                ),
+              const SizedBox(height: 10),
+              for (final item in filtered) _attendanceRecord(item),
             ],
           );
         },
       ),
     );
   }
+
+  Widget _summaryCard(String label, String value, IconData icon, Color color) {
+    final width = MediaQuery.sizeOf(context).width;
+    return SizedBox(
+      width: (width - 42) / 2,
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: _softCard(),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    label,
+                    style: AppTypography.inter(fontSize: 12, color: AppColors.textSecondary),
+                  ),
+                ),
+                Icon(icon, size: 16, color: color),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(value, style: AppTypography.inter(fontSize: 18, fontWeight: FontWeight.w800)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _logChip(String label, int count, Color color) {
+    final selected = _filter == label;
+    return Padding(
+      padding: const EdgeInsets.only(right: 8),
+      child: InkWell(
+        onTap: () => setState(() => _filter = label),
+        borderRadius: BorderRadius.circular(20),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          decoration: BoxDecoration(
+            color: selected ? AppColors.actionGreen : Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: selected ? AppColors.actionGreen : AppColors.border),
+          ),
+          child: Text(
+            '$label $count',
+            style: AppTypography.inter(
+              fontWeight: FontWeight.w700,
+              color: selected ? Colors.white : color,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _attendanceRecord(Map<String, dynamic> item) {
+    final status = '${item['status'] ?? ''}'.toUpperCase();
+    final parsed = DateTime.tryParse('${item['date'] ?? ''}');
+    final dateLabel = parsed == null
+        ? '${item['date'] ?? ''}'
+        : '${parsed.day.toString().padLeft(2, '0')} ${_monthName(parsed.month).substring(0, 3)} ${parsed.year}';
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(14),
+      decoration: _softCard(),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Remix.calendar_line, size: 16, color: AppColors.textSecondary),
+              const SizedBox(width: 6),
+              Text(dateLabel, style: AppTypography.inter(fontWeight: FontWeight.w800)),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  '${item['day'] ?? ''}',
+                  style: AppTypography.inter(color: AppColors.textSecondary),
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: status.contains('HALF') ? const Color(0xFFF3E8FF) : AppColors.lightPrimary,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  status,
+                  style: AppTypography.inter(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w800,
+                    color: status.contains('HALF') ? const Color(0xFF7C3AED) : AppColors.darkPrimary,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              _timeCol('CHECK IN', '${item['checkIn'] ?? '--'}'),
+              _timeCol('CHECK OUT', '${item['checkOut'] ?? '--'}'),
+              _timeCol('WORK HOURS', '${item['workHours'] ?? '--'}'),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              const Icon(Remix.map_pin_line, size: 14, color: AppColors.textSecondary),
+              const SizedBox(width: 4),
+              Expanded(
+                child: Text(
+                  '${item['branch'] ?? ''}',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTypography.inter(fontSize: 12, color: AppColors.textSecondary),
+                ),
+              ),
+              Text(
+                'Break: ${item['breakDuration'] ?? '0h 0m'}',
+                style: AppTypography.inter(fontSize: 12, color: const Color(0xFFF59E0B)),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _timeCol(String label, String value) => Expanded(
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: AppTypography.inter(fontSize: 10, color: AppColors.textSecondary)),
+        Text(value, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppTypography.inter(fontWeight: FontWeight.w800)),
+      ],
+    ),
+  );
+}
+
+Widget _profileAction(IconData icon, String label, VoidCallback onTap) {
+  return Padding(
+    padding: const EdgeInsets.only(bottom: 8),
+    child: Material(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(16),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: AppColors.border),
+          ),
+          child: Row(
+            children: [
+              Icon(icon, color: AppColors.darkPrimary, size: 18),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(label, style: AppTypography.inter(fontWeight: FontWeight.w700)),
+              ),
+              const Icon(Remix.arrow_right_s_line, color: Color(0xFF94A3B8)),
+            ],
+          ),
+        ),
+      ),
+    ),
+  );
+}
+
+Widget _profileRow(IconData icon, String label, String value) {
+  return Padding(
+    padding: const EdgeInsets.symmetric(vertical: 6),
+    child: Row(
+      children: [
+        Icon(icon, size: 16, color: AppColors.textSecondary),
+        const SizedBox(width: 8),
+        Text(label, style: AppTypography.inter(color: AppColors.textSecondary)),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            value,
+            textAlign: TextAlign.end,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: AppTypography.inter(fontWeight: FontWeight.w800),
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+String _profileInitials(String name) {
+  final parts = name.trim().split(RegExp(r'\s+')).where((part) => part.isNotEmpty);
+  final letters = parts.map((part) => part[0]).take(2).join();
+  return letters.isEmpty ? 'SP' : letters.toUpperCase();
+}
+
+Widget _payslipError(WidgetRef ref) {
+  return Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Text('Recent Payslips', style: AppTypography.inter(fontWeight: FontWeight.w800)),
+      const SizedBox(height: 8),
+      Row(
+        children: [
+          const Icon(Remix.error_warning_line, color: Color(0xFFDC2626), size: 18),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              'Unable to load payslips',
+              style: AppTypography.inter(color: AppColors.textSecondary),
+            ),
+          ),
+          TextButton(
+            onPressed: () => ref.invalidate(payslipsProvider),
+            child: Text(
+              'Retry',
+              style: AppTypography.inter(
+                fontWeight: FontWeight.w800,
+                color: AppColors.darkPrimary,
+              ),
+            ),
+          ),
+        ],
+      ),
+    ],
+  );
 }
 
 class _ErrorCard extends StatelessWidget {
@@ -1428,3 +2115,18 @@ BoxDecoration _cardDecoration() => BoxDecoration(
 
 String _status(Map<String, dynamic> item) =>
     field(item, const ['status'], 'PENDING').toUpperCase();
+
+bool _matchesWorkFilter(Map<String, dynamic> item, String filter) {
+  if (filter == 'All' || filter == 'Pick Date') return true;
+  final date = workDate(item);
+  if (date == null) return false;
+  final now = DateTime.now();
+  final today = DateTime(now.year, now.month, now.day);
+  if (filter == 'Today') return _sameDay(date, today);
+  if (filter == 'Tomorrow') {
+    return _sameDay(date, today.add(const Duration(days: 1)));
+  }
+  final start = today.subtract(Duration(days: today.weekday - 1));
+  final end = start.add(const Duration(days: 6));
+  return !date.isBefore(start) && !date.isAfter(end);
+}

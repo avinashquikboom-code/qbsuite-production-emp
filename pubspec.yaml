@@ -61,7 +61,7 @@ flutter:
   # The following line ensures that the Material Icons font is
   # included with your application, so that you can use the icons in
   # the material Icons class.
-  uses-material-design: false
+  uses-material-design: true
 
   assets:
     - assets/images/app_logo_brand.png
@@ -108,3 +108,5 @@ flutter:
           weight: 600
         - asset: assets/fonts/Inter.ttf
           weight: 700
+        - asset: assets/fonts/Inter.ttf
+          weight: 800

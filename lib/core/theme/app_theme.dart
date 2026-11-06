@@ -3,6 +3,7 @@ import '../icons/remix_icon.dart';
 import 'package:flutter/material.dart';
 
 import 'app_colors.dart';
+import 'app_typography.dart';
 
 /// Apply using MaterialApp(theme: AppTheme.light).
 /// Register Inter 400/500/600/700 in the application's pubspec.yaml.
@@ -75,28 +76,29 @@ abstract final class AppTheme {
       primaryColor: AppColors.primary,
       scaffoldBackgroundColor: AppColors.background,
       fontFamily: 'Inter',
-      textTheme: const TextTheme(
-        bodyMedium: TextStyle(
+      textTheme: AppTypography.interTextTheme().copyWith(
+        bodyMedium: AppTypography.inter(
           color: AppColors.textPrimary,
           fontWeight: FontWeight.w400,
         ),
-        bodySmall: TextStyle(
+        bodySmall: AppTypography.inter(
           color: AppColors.textSecondary,
           fontWeight: FontWeight.w400,
         ),
-        labelLarge: TextStyle(
+        labelLarge: AppTypography.inter(
           color: AppColors.textPrimary,
           fontWeight: FontWeight.w600,
         ),
-        titleMedium: TextStyle(
+        titleMedium: AppTypography.inter(
           color: AppColors.textPrimary,
           fontWeight: FontWeight.w600,
         ),
-        headlineSmall: TextStyle(
+        headlineSmall: AppTypography.inter(
           color: AppColors.textPrimary,
           fontWeight: FontWeight.w700,
         ),
       ),
+      primaryTextTheme: AppTypography.interTextTheme(),
       elevatedButtonTheme: ElevatedButtonThemeData(style: buttonStyle),
       filledButtonTheme: FilledButtonThemeData(style: buttonStyle),
       outlinedButtonTheme: OutlinedButtonThemeData(
@@ -170,9 +172,13 @@ abstract final class AppTheme {
         indicatorColor: AppColors.primary,
         labelStyle: TextStyle(fontFamily: 'Inter', fontWeight: FontWeight.w600),
       ),
+      iconTheme: const IconThemeData(color: AppColors.textPrimary, size: 22),
       navigationBarTheme: NavigationBarThemeData(
         backgroundColor: AppColors.surface,
         indicatorColor: AppColors.lightPrimary,
+        labelTextStyle: WidgetStatePropertyAll(
+          AppTypography.inter(fontSize: 11, fontWeight: FontWeight.w600),
+        ),
         iconTheme: WidgetStateProperty.resolveWith(
           (states) => IconThemeData(
             color: states.contains(WidgetState.selected)
@@ -191,19 +197,27 @@ abstract final class AppTheme {
           fontFamily: 'Inter',
         ),
       ),
-      bottomNavigationBarTheme: const BottomNavigationBarThemeData(
+      bottomNavigationBarTheme: BottomNavigationBarThemeData(
         backgroundColor: AppColors.surface,
         selectedItemColor: AppColors.primary,
         unselectedItemColor: AppColors.textSecondary,
+        selectedLabelStyle: AppTypography.inter(fontWeight: FontWeight.w600),
+        unselectedLabelStyle: AppTypography.inter(fontWeight: FontWeight.w500),
       ),
       listTileTheme: const ListTileThemeData(
         selectedColor: AppColors.darkPrimary,
         selectedTileColor: AppColors.lightPrimary,
       ),
-      appBarTheme: const AppBarTheme(
+      appBarTheme: AppBarTheme(
         backgroundColor: AppColors.surface,
         foregroundColor: AppColors.textPrimary,
         surfaceTintColor: Colors.transparent,
+        titleTextStyle: AppTypography.inter(
+          fontSize: 18,
+          fontWeight: FontWeight.w700,
+          color: AppColors.textPrimary,
+        ),
+        toolbarTextStyle: AppTypography.inter(color: AppColors.textPrimary),
       ),
     );
   }
