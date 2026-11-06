@@ -39,6 +39,7 @@ class _ProductionShellState extends ConsumerState<ProductionShell> {
       ProductionHomePage(
         onOpenDrawer: () => _scaffoldKey.currentState?.openDrawer(),
         onOpenTasks: () => _selectTab(1),
+        onOpenCalendar: () => _selectTab(2),
       ),
       const ProductionWorkPage(),
       const ProductionCalendarPage(),
