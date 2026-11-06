@@ -7,6 +7,7 @@ import '../../../../core/theme/app_typography.dart';
 import '../../../auth/presentation/viewmodels/auth_viewmodel.dart';
 import '../providers/production_providers.dart';
 import 'production_pages.dart';
+import 'request_overtime_sheet.dart';
 
 class ProductionShell extends ConsumerStatefulWidget {
   const ProductionShell({super.key});
@@ -37,8 +38,7 @@ class _ProductionShellState extends ConsumerState<ProductionShell> {
     final pages = [
       ProductionHomePage(
         onOpenDrawer: () => _scaffoldKey.currentState?.openDrawer(),
-        onOpenTasks: () => _selectTab(1),
-        onOpenCalendar: () => _selectTab(2),
+        onOpenTasks: () {},
       ),
       const ProductionWorkPage(),
       const ProductionCalendarPage(),
@@ -62,6 +62,9 @@ class _ProductionShellState extends ConsumerState<ProductionShell> {
                   builder: (_) => const AttendanceLogPage(),
                 ),
               );
+            case 'Request Overtime':
+              setState(() => _drawerItem = label);
+              showRequestOvertimeSheet(context);
             case 'Settings':
               setState(() => _drawerItem = label);
               _selectTab(3);
@@ -225,10 +228,15 @@ class _ProductionDrawer extends ConsumerWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            _text(profile, const ['name', 'fullName'], 'Employee'),
+                            _text(profile, const [
+                              'name',
+                              'fullName',
+                            ], 'Employee'),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: AppTypography.inter(fontWeight: FontWeight.w800),
+                            style: AppTypography.inter(
+                              fontWeight: FontWeight.w800,
+                            ),
                           ),
                           Text(
                             '${_text(profile, const ['employeeCode', 'code'], 'EMP-011')} • ${_text(profile, const ['designation'], 'Production')}',
@@ -244,7 +252,10 @@ class _ProductionDrawer extends ConsumerWidget {
                       ),
                     ),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
                       decoration: BoxDecoration(
                         color: AppColors.lightPrimary,
                         borderRadius: BorderRadius.circular(20),
@@ -270,6 +281,7 @@ class _ProductionDrawer extends ConsumerWidget {
                   _tile('Dashboard', Remix.home_5_line),
                   _section('HRM & WORKPLACE'),
                   _tile('Attendance', Remix.fingerprint_line),
+                  _tile('Request Overtime', Remix.time_line),
                   _tile('Requests & Leaves', Remix.calendar_event_line),
                   _tile('Expenses & Claims', Remix.money_dollar_circle_line),
                   _tile('Remote Work', Remix.home_5_line),
@@ -288,7 +300,10 @@ class _ProductionDrawer extends ConsumerWidget {
                 },
                 borderRadius: BorderRadius.circular(14),
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 14,
+                  ),
                   decoration: BoxDecoration(
                     color: const Color(0xFFFFF1F2),
                     borderRadius: BorderRadius.circular(14),
@@ -296,7 +311,10 @@ class _ProductionDrawer extends ConsumerWidget {
                   ),
                   child: Row(
                     children: [
-                      const Icon(Remix.logout_box_r_line, color: Color(0xFFDC2626)),
+                      const Icon(
+                        Remix.logout_box_r_line,
+                        color: Color(0xFFDC2626),
+                      ),
                       const SizedBox(width: 10),
                       Expanded(
                         child: Text(
@@ -307,7 +325,10 @@ class _ProductionDrawer extends ConsumerWidget {
                           ),
                         ),
                       ),
-                      const Icon(Remix.arrow_right_s_line, color: Color(0xFFDC2626)),
+                      const Icon(
+                        Remix.arrow_right_s_line,
+                        color: Color(0xFFDC2626),
+                      ),
                     ],
                   ),
                 ),
@@ -348,7 +369,9 @@ class _ProductionDrawer extends ConsumerWidget {
                 Icon(
                   icon,
                   size: 20,
-                  color: active ? AppColors.darkPrimary : const Color(0xFF64748B),
+                  color: active
+                      ? AppColors.darkPrimary
+                      : const Color(0xFF64748B),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -356,14 +379,18 @@ class _ProductionDrawer extends ConsumerWidget {
                     label,
                     style: AppTypography.inter(
                       fontWeight: FontWeight.w700,
-                      color: active ? AppColors.darkPrimary : AppColors.textPrimary,
+                      color: active
+                          ? AppColors.darkPrimary
+                          : AppColors.textPrimary,
                     ),
                   ),
                 ),
                 Icon(
                   Remix.arrow_right_s_line,
                   size: 18,
-                  color: active ? AppColors.darkPrimary : const Color(0xFF94A3B8),
+                  color: active
+                      ? AppColors.darkPrimary
+                      : const Color(0xFF94A3B8),
                 ),
               ],
             ),
@@ -397,7 +424,10 @@ class _PlaceholderPage extends StatelessWidget {
 }
 
 String _initials(String name) {
-  final parts = name.trim().split(RegExp(r'\s+')).where((part) => part.isNotEmpty);
+  final parts = name
+      .trim()
+      .split(RegExp(r'\s+'))
+      .where((part) => part.isNotEmpty);
   final letters = parts.map((part) => part[0]).take(2).join();
   return letters.isEmpty ? 'SP' : letters.toUpperCase();
 }

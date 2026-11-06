@@ -272,7 +272,7 @@ void main() {
       UncontrolledProviderScope(container: container, child: const App()),
     );
     await tester.pumpAndSettle();
-    expect(find.text('Sign in to continue'), findsOneWidget);
+    expect(find.text('Choose your login type to continue'), findsOneWidget);
     expect(
       router.routeInformationProvider.value.uri.queryParameters['from'],
       target,
@@ -285,7 +285,7 @@ void main() {
     expect(find.text('This feature is not connected yet.'), findsOneWidget);
     await container.read(authViewModelProvider.notifier).signOut();
     await tester.pumpAndSettle();
-    expect(find.text('Sign in to continue'), findsOneWidget);
+    expect(find.text('Choose your login type to continue'), findsOneWidget);
     expect(find.text('This feature is not connected yet.'), findsNothing);
   });
 

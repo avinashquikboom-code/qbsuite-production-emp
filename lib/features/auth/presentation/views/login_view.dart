@@ -50,6 +50,10 @@ class _LoginViewState extends ConsumerState<LoginView> {
     if (mounted) setState(() => _loading = false);
   }
 
+  void _notice(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+  }
+
   @override
   Widget build(BuildContext context) {
     final width = MediaQuery.sizeOf(context).width;
@@ -61,6 +65,7 @@ class _LoginViewState extends ConsumerState<LoginView> {
         child: LayoutBuilder(
           builder: (context, constraints) {
             return SingleChildScrollView(
+              physics: const BouncingScrollPhysics(),
               keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
               padding: EdgeInsets.fromLTRB(
                 compact ? 12 : 20,
@@ -74,7 +79,7 @@ class _LoginViewState extends ConsumerState<LoginView> {
                 ),
                 child: Center(
                   child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 440),
+                    constraints: const BoxConstraints(maxWidth: 480),
                     child: Column(
                       children: [
                         const SizedBox(height: 8),
@@ -89,13 +94,13 @@ class _LoginViewState extends ConsumerState<LoginView> {
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             Container(
-                              width: 24,
+                              width: 32,
                               height: 1.5,
                               color: AppColors.primary.withValues(alpha: 0.6),
                             ),
                             Flexible(
                               child: Padding(
-                                padding: const EdgeInsets.symmetric(horizontal: 8),
+                                padding: const EdgeInsets.symmetric(horizontal: 10),
                                 child: FittedBox(
                                   fit: BoxFit.scaleDown,
                                   child: Text(
@@ -103,7 +108,7 @@ class _LoginViewState extends ConsumerState<LoginView> {
                                     style: AppTypography.inter(
                                       fontSize: 10.5,
                                       fontWeight: FontWeight.w700,
-                                      letterSpacing: 1.2,
+                                      letterSpacing: 1.6,
                                       color: const Color(0xFF667085),
                                     ),
                                   ),
@@ -111,7 +116,7 @@ class _LoginViewState extends ConsumerState<LoginView> {
                               ),
                             ),
                             Container(
-                              width: 24,
+                              width: 32,
                               height: 1.5,
                               color: AppColors.primary.withValues(alpha: 0.6),
                             ),
@@ -123,13 +128,15 @@ class _LoginViewState extends ConsumerState<LoginView> {
                           style: AppTypography.inter(
                             fontSize: 20,
                             fontWeight: FontWeight.w700,
+                            color: const Color(0xFF1D2939),
                           ),
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          'Sign in to continue',
+                          'Choose your login type to continue',
                           style: AppTypography.inter(
                             fontSize: 13,
+                            fontWeight: FontWeight.w400,
                             color: const Color(0xFF667085),
                           ),
                         ),
@@ -157,6 +164,7 @@ class _LoginViewState extends ConsumerState<LoginView> {
                                 style: AppTypography.inter(
                                   fontSize: 15,
                                   fontWeight: FontWeight.w700,
+                                  color: const Color(0xFF1D2939),
                                 ),
                               ),
                               const SizedBox(height: 10),
@@ -182,104 +190,165 @@ class _LoginViewState extends ConsumerState<LoginView> {
                                 ],
                               ),
                               const SizedBox(height: 18),
-                              TextField(
-                                controller: _email,
-                                keyboardType: _emailMode
-                                    ? TextInputType.text
-                                    : TextInputType.phone,
-                                decoration: _fieldDecoration(
-                                  hint: _emailMode
-                                      ? 'Enter email or Employee ID'
-                                      : 'Enter mobile number',
-                                  icon: _emailMode
-                                      ? Remix.mail_line
-                                      : Remix.phone_line,
-                                ),
-                              ),
-                              const SizedBox(height: 6),
-                              Text(
-                                _emailMode
-                                    ? 'e.g. employee@company.com or EMP-011'
-                                    : 'e.g. 9876543210',
-                                style: AppTypography.inter(
-                                  fontSize: 11.5,
-                                  color: const Color(0xFF94A3B8),
-                                ),
-                              ),
-                              const SizedBox(height: 14),
-                              TextField(
-                                controller: _password,
-                                obscureText: _obscure,
-                                decoration: _fieldDecoration(
-                                  hint: '••••••',
-                                  icon: Remix.lock_2_line,
-                                  suffix: IconButton(
-                                    onPressed: () =>
-                                        setState(() => _obscure = !_obscure),
-                                    icon: Icon(
-                                      _obscure
-                                          ? Remix.eye_off_line
-                                          : Remix.eye_line,
-                                      color: AppColors.primary,
-                                      size: 20,
-                                    ),
+                              if (_emailMode)
+                                TextField(
+                                  controller: _email,
+                                  keyboardType: TextInputType.text,
+                                  style: AppTypography.inter(
+                                    fontSize: 14.5,
+                                    fontWeight: FontWeight.w500,
+                                    color: const Color(0xFF101828),
                                   ),
-                                ),
-                              ),
-                              const SizedBox(height: 12),
-                              Row(
-                                children: [
-                                  SizedBox(
-                                    width: 20,
-                                    height: 20,
-                                    child: Checkbox(
-                                      value: _remember,
-                                      activeColor: AppColors.primary,
-                                      onChanged: (value) => setState(
-                                        () => _remember = value ?? false,
+                                  decoration: _fieldDecoration(
+                                    hint: 'Enter email or Employee ID',
+                                    icon: Remix.mail_line,
+                                  ),
+                                )
+                              else
+                                Row(
+                                  children: [
+                                    Container(
+                                      height: 52,
+                                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFFF8FAFC),
+                                        borderRadius: BorderRadius.circular(12),
+                                        border: Border.all(color: const Color(0xFFCBD5E1)),
                                       ),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Text(
-                                    'Remember Me',
-                                    style: AppTypography.inter(
-                                      fontSize: 13,
-                                      color: const Color(0xFF475569),
-                                    ),
-                                  ),
-                                  const Spacer(),
-                                  Flexible(
-                                    child: GestureDetector(
-                                      onTap: () {
-                                        ScaffoldMessenger.of(context).showSnackBar(
-                                          const SnackBar(
-                                            content: Text(
-                                              'Ask your administrator to reset your password.',
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          const Icon(
+                                            Remix.smartphone_line,
+                                            size: 16,
+                                            color: AppColors.primary,
+                                          ),
+                                          const SizedBox(width: 6),
+                                          Text(
+                                            '+91',
+                                            style: AppTypography.inter(
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.w700,
+                                              color: const Color(0xFF1E293B),
                                             ),
                                           ),
-                                        );
-                                      },
-                                      child: Text(
-                                        'Forgot Password?',
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
+                                        ],
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: TextField(
+                                        controller: _email,
+                                        keyboardType: TextInputType.phone,
                                         style: AppTypography.inter(
-                                          fontSize: 13,
-                                          fontWeight: FontWeight.w700,
-                                          color: AppColors.primary,
+                                          fontSize: 14.5,
+                                          fontWeight: FontWeight.w500,
+                                          color: const Color(0xFF101828),
+                                        ),
+                                        decoration: _fieldDecoration(
+                                          hint: 'Enter mobile number',
+                                          icon: Remix.phone_line,
                                         ),
                                       ),
                                     ),
+                                  ],
+                                ),
+                              const SizedBox(height: 5),
+                              Padding(
+                                padding: const EdgeInsets.only(left: 4),
+                                child: Text(
+                                  _emailMode
+                                      ? 'e.g. employee@company.com or EMP-011'
+                                      : 'e.g. 9876543210',
+                                  style: AppTypography.inter(
+                                    fontSize: 11.5,
+                                    color: const Color(0xFF94A3B8),
                                   ),
-                                ],
+                                ),
                               ),
+                              if (_emailMode) ...[
+                                const SizedBox(height: 14),
+                                TextField(
+                                  controller: _password,
+                                  obscureText: _obscure,
+                                  style: AppTypography.inter(
+                                    fontSize: 14.5,
+                                    fontWeight: FontWeight.w500,
+                                    color: const Color(0xFF101828),
+                                  ),
+                                  decoration: _fieldDecoration(
+                                    hint: '••••••',
+                                    icon: Remix.lock_2_line,
+                                    suffix: IconButton(
+                                      onPressed: () => setState(() => _obscure = !_obscure),
+                                      icon: Icon(
+                                        _obscure ? Remix.eye_off_line : Remix.eye_line,
+                                        color: AppColors.primary,
+                                        size: 20,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(height: 12),
+                                Wrap(
+                                  crossAxisAlignment: WrapCrossAlignment.center,
+                                  spacing: 8,
+                                  runSpacing: 8,
+                                  children: [
+                                    Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        SizedBox(
+                                          width: 20,
+                                          height: 20,
+                                          child: Checkbox(
+                                            value: _remember,
+                                            activeColor: const Color(0xFF5EC269),
+                                            shape: RoundedRectangleBorder(
+                                              borderRadius: BorderRadius.circular(4),
+                                            ),
+                                            side: const BorderSide(
+                                              color: Color(0xFFCBD5E1),
+                                              width: 1.5,
+                                            ),
+                                            onChanged: (value) =>
+                                                setState(() => _remember = value ?? false),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        Text(
+                                          'Remember Me',
+                                          style: AppTypography.inter(
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.w500,
+                                            color: const Color(0xFF475569),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    GestureDetector(
+                                      onTap: () => _notice(
+                                        'Ask your administrator to reset your password.',
+                                      ),
+                                      child: Text(
+                                        'Forgot Password?',
+                                        style: AppTypography.inter(
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w700,
+                                          color: const Color(0xFF5EC269),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
                               if (_error != null) ...[
                                 const SizedBox(height: 8),
                                 Text(
                                   _error!,
                                   style: AppTypography.inter(
                                     fontSize: 12,
+                                    fontWeight: FontWeight.w500,
                                     color: const Color(0xFFDC2626),
                                   ),
                                 ),
@@ -291,19 +360,24 @@ class _LoginViewState extends ConsumerState<LoginView> {
                                 child: DecoratedBox(
                                   decoration: BoxDecoration(
                                     gradient: const LinearGradient(
-                                      colors: [
-                                        AppColors.primary,
-                                        AppColors.darkPrimary,
-                                      ],
+                                      colors: [Color(0xFF5EC269), Color(0xFF078A43)],
                                     ),
                                     borderRadius: BorderRadius.circular(14),
                                   ),
                                   child: ElevatedButton(
-                                    onPressed: _loading ? null : _signIn,
+                                    onPressed: _loading
+                                        ? null
+                                        : (_emailMode
+                                              ? _signIn
+                                              : () => _notice(
+                                                  'Mobile OTP is not available in this preview.',
+                                                )),
                                     style: ElevatedButton.styleFrom(
                                       backgroundColor: Colors.transparent,
+                                      disabledBackgroundColor: const Color(0xFFCBD5E1),
                                       shadowColor: Colors.transparent,
                                       foregroundColor: Colors.white,
+                                      elevation: 0,
                                       shape: RoundedRectangleBorder(
                                         borderRadius: BorderRadius.circular(14),
                                       ),
@@ -317,11 +391,10 @@ class _LoginViewState extends ConsumerState<LoginView> {
                                             ),
                                           )
                                         : Row(
-                                            mainAxisAlignment:
-                                                MainAxisAlignment.center,
+                                            mainAxisAlignment: MainAxisAlignment.center,
                                             children: [
                                               Text(
-                                                'Sign In',
+                                                _emailMode ? 'Sign In' : 'Send OTP',
                                                 style: AppTypography.inter(
                                                   fontSize: 15,
                                                   fontWeight: FontWeight.w700,
@@ -339,9 +412,12 @@ class _LoginViewState extends ConsumerState<LoginView> {
                                   ),
                                 ),
                               ),
+                              const SizedBox(height: 16),
+                              const _SecureLoginCard(),
                             ],
                           ),
                         ),
+                        const SizedBox(height: 24),
                       ],
                     ),
                   ),
@@ -366,7 +442,7 @@ class _LoginViewState extends ConsumerState<LoginView> {
     return InputDecoration(
       hintText: hint,
       hintStyle: AppTypography.inter(fontSize: 14, color: const Color(0xFF98A2B3)),
-      prefixIcon: Icon(icon, color: AppColors.primary, size: 20),
+      prefixIcon: Icon(icon, color: const Color(0xFF5EC269), size: 20),
       suffixIcon: suffix,
       filled: true,
       fillColor: Colors.white,
@@ -375,40 +451,90 @@ class _LoginViewState extends ConsumerState<LoginView> {
       enabledBorder: border,
       focusedBorder: const OutlineInputBorder(
         borderRadius: BorderRadius.all(Radius.circular(12)),
-        borderSide: BorderSide(color: AppColors.primary, width: 1.5),
+        borderSide: BorderSide(color: Color(0xFF5EC269), width: 1.5),
       ),
     );
   }
 
   Widget _pill(String label, IconData icon, bool selected, VoidCallback onTap) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
-        decoration: BoxDecoration(
-          color: selected ? AppColors.primary : const Color(0xFFF1F5F9),
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, size: 16, color: selected ? Colors.white : const Color(0xFF334155)),
-            const SizedBox(width: 6),
-            Flexible(
-              child: Text(
-                label,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: AppTypography.inter(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: selected ? Colors.white : const Color(0xFF1E293B),
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+          decoration: BoxDecoration(
+            color: selected ? AppColors.primary : const Color(0xFFF1F5F9),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, size: 16, color: selected ? Colors.white : const Color(0xFF334155)),
+              const SizedBox(width: 8),
+              Flexible(
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    label,
+                    style: AppTypography.inter(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: selected ? Colors.white : const Color(0xFF1E293B),
+                    ),
+                  ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
+      ),
+    );
+  }
+}
+
+class _SecureLoginCard extends StatelessWidget {
+  const _SecureLoginCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF0FDF4),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFDCFCE7)),
+      ),
+      child: Row(
+        children: [
+          const Icon(Remix.shield_check_fill, color: Color(0xFF5EC269), size: 24),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Secure Login',
+                  style: AppTypography.inter(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: const Color(0xFF166534),
+                  ),
+                ),
+                Text(
+                  'Your data is protected with advanced security',
+                  style: AppTypography.inter(
+                    fontSize: 11,
+                    color: const Color(0xFF475569),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const Icon(Remix.shield_check_line, color: Color(0xFF5EC269), size: 26),
+        ],
       ),
     );
   }

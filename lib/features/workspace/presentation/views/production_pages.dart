@@ -9,23 +9,21 @@ import '../../../../core/theme/app_typography.dart';
 import '../../../../core/utils/app_currency.dart';
 import '../../../auth/presentation/viewmodels/auth_viewmodel.dart';
 import '../providers/production_providers.dart';
+import 'request_overtime_sheet.dart';
 
 class ProductionHomePage extends ConsumerWidget {
   const ProductionHomePage({
     super.key,
     required this.onOpenDrawer,
     required this.onOpenTasks,
-    required this.onOpenCalendar,
   });
   final VoidCallback onOpenDrawer;
   final VoidCallback onOpenTasks;
-  final VoidCallback onOpenCalendar;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final profile = ref.watch(employeeProfileProvider);
     final attendance = ref.watch(attendanceProvider);
-    final works = ref.watch(worksProvider);
     final data = profile.asData?.value ?? const <String, dynamic>{};
     final name = field(data, const ['name', 'fullName'], 'Employee');
     final code = field(data, const ['employeeCode', 'code'], '');
@@ -149,15 +147,7 @@ class ProductionHomePage extends ConsumerWidget {
           data: (status) => _AttendanceCard(status: status),
         ),
         const SizedBox(height: 16),
-        works.when(
-          loading: () => const SizedBox.shrink(),
-          error: (error, _) => _ErrorCard(
-            message: error.toString(),
-            onRetry: () => ref.invalidate(worksProvider),
-          ),
-          data: (items) =>
-              _CalendarPreview(items: items, onViewAll: onOpenCalendar),
-        ),
+        const _EmployeeCalendarSoon(),
         const SizedBox(height: 16),
         Container(
           padding: const EdgeInsets.all(14),
@@ -380,6 +370,27 @@ class _AttendanceCard extends ConsumerWidget {
               label: Text(punchedIn ? 'PUNCH OUT' : 'PUNCH IN'),
             ),
           ),
+          const SizedBox(height: 10),
+          SizedBox(
+            width: double.infinity,
+            height: 48,
+            child: OutlinedButton.icon(
+              onPressed: () => showRequestOvertimeSheet(context),
+              icon: const Icon(Remix.time_line, size: 18, color: AppColors.darkPrimary),
+              label: Text(
+                'Request Overtime',
+                style: AppTypography.inter(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.darkPrimary,
+                ),
+              ),
+              style: OutlinedButton.styleFrom(
+                side: const BorderSide(color: AppColors.primary, width: 1.4),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -446,268 +457,49 @@ BoxDecoration _softCard() => BoxDecoration(
   ],
 );
 
-class _CalendarPreview extends StatefulWidget {
-  const _CalendarPreview({required this.items, required this.onViewAll});
-  final List<Map<String, dynamic>> items;
-  final VoidCallback onViewAll;
-
-  @override
-  State<_CalendarPreview> createState() => _CalendarPreviewState();
-}
-
-class _CalendarPreviewState extends State<_CalendarPreview> {
-  DateTime _selected = DateTime.now();
+class _EmployeeCalendarSoon extends StatelessWidget {
+  const _EmployeeCalendarSoon();
 
   @override
   Widget build(BuildContext context) {
-    final today = DateTime.now();
-    final selected = DateTime(_selected.year, _selected.month, _selected.day);
-    final monthItems = widget.items.where((item) {
-      final date = workDate(item);
-      return date != null &&
-          date.year == selected.year &&
-          date.month == selected.month;
-    }).toList();
-    final completed = monthItems
-        .where((item) => _status(item) == 'COMPLETED')
-        .length;
-    final remaining = monthItems.length - completed;
-    final dates = List.generate(
-      7,
-      (index) => selected.subtract(Duration(days: 3 - index)),
-    );
-    final dayItems = widget.items
-        .where((item) => _sameDay(workDate(item), selected))
-        .toList();
-    final width = MediaQuery.sizeOf(context).width;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Expanded(
-              child: Text(
-                'EMPLOYEE CALENDAR',
-                style: AppTypography.inter(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: 1.1,
-                  color: AppColors.textSecondary,
-                ),
-              ),
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 28),
+      decoration: _softCard(),
+      child: Column(
+        children: [
+          Text(
+            'EMPLOYEE CALENDAR',
+            style: AppTypography.inter(
+              fontSize: 11,
+              fontWeight: FontWeight.w800,
+              letterSpacing: 0.8,
+              color: AppColors.textSecondary,
             ),
-            InkWell(
-              onTap: widget.onViewAll,
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    'View All',
-                    style: AppTypography.inter(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.darkPrimary,
-                    ),
-                  ),
-                  const Icon(
-                    Remix.arrow_right_s_line,
-                    size: 16,
-                    color: AppColors.darkPrimary,
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 10),
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.all(14),
-          decoration: _cardDecoration(),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Flexible(
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: AppColors.lightPrimary,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        '${_monthName(selected.month)} Work Overview',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: AppTypography.inter(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.darkPrimary,
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    monthItems.isEmpty
-                        ? 'No Tasks'
-                        : remaining > 0
-                        ? '$remaining Remaining'
-                        : 'All Completed',
-                    style: AppTypography.inter(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.darkPrimary,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 10),
-              Text(
-                monthItems.isEmpty
-                    ? 'No tasks scheduled this month'
-                    : '$completed/${monthItems.length} Tasks Completed',
-                style: AppTypography.inter(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              const SizedBox(height: 6),
-              ClipRRect(
-                borderRadius: BorderRadius.circular(4),
-                child: LinearProgressIndicator(
-                  minHeight: 6,
-                  value: monthItems.isEmpty ? 0 : completed / monthItems.length,
-                  backgroundColor: const Color(0xFFF1F5F9),
-                  color: AppColors.primary,
-                ),
-              ),
-            ],
           ),
-        ),
-        const SizedBox(height: 12),
-        SizedBox(
-          height: 78 * MediaQuery.textScalerOf(context).scale(1),
-          child: ListView.separated(
-            scrollDirection: Axis.horizontal,
-            itemCount: dates.length,
-            separatorBuilder: (_, _) => const SizedBox(width: 8),
-            itemBuilder: (context, index) {
-              final date = dates[index];
-              final isSelected = _sameDay(date, selected);
-              final isToday = _sameDay(date, today);
-              final hasWork = widget.items.any(
-                (item) => _sameDay(workDate(item), date),
-              );
-              return InkWell(
-                onTap: () => setState(() => _selected = date),
-                borderRadius: BorderRadius.circular(16),
-                child: Container(
-                  width: width < 360 ? 48 : 56,
-                  padding: const EdgeInsets.symmetric(vertical: 8),
-                  decoration: BoxDecoration(
-                    color: isSelected ? AppColors.darkPrimary : Colors.white,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color: isSelected
-                          ? AppColors.darkPrimary
-                          : isToday
-                          ? AppColors.primary
-                          : AppColors.border,
-                    ),
-                  ),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        _weekday(date.weekday),
-                        style: AppTypography.inter(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w600,
-                          color: isSelected
-                              ? Colors.white70
-                              : AppColors.textSecondary,
-                        ),
-                      ),
-                      Text(
-                        '${date.day}',
-                        style: AppTypography.inter(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w800,
-                          color: isSelected ? Colors.white : AppColors.textPrimary,
-                        ),
-                      ),
-                      Container(
-                        width: 5,
-                        height: 5,
-                        decoration: BoxDecoration(
-                          color: hasWork
-                              ? (isSelected ? Colors.white : AppColors.actionGreen)
-                              : Colors.transparent,
-                          shape: BoxShape.circle,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              );
-            },
-          ),
-        ),
-        const SizedBox(height: 12),
-        Row(
-          children: [
-            Expanded(
-              child: Text(
-                '${selected.day} ${_monthName(selected.month).toUpperCase()} ${selected.year}',
-                style: AppTypography.inter(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-            ),
-            if (_sameDay(selected, today))
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(
-                  color: AppColors.lightPrimary,
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: Text(
-                  'TODAY',
-                  style: AppTypography.inter(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.darkPrimary,
-                  ),
-                ),
-              ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        if (dayItems.isEmpty)
+          const SizedBox(height: 16),
           Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(vertical: 24),
-            decoration: _cardDecoration(),
-            child: Text(
-              'No activities scheduled for this date.',
-              textAlign: TextAlign.center,
-              style: AppTypography.inter(
-                fontSize: 12.5,
-                fontWeight: FontWeight.w600,
-                color: AppColors.textSecondary,
-              ),
+            width: 56,
+            height: 56,
+            decoration: const BoxDecoration(
+              color: AppColors.lightPrimary,
+              shape: BoxShape.circle,
             ),
-          )
-        else
-          ...dayItems.map((item) => _UpcomingTaskCard(item: item)),
-      ],
+            child: const Icon(Remix.calendar_line, color: AppColors.darkPrimary, size: 26),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            'Coming Soon',
+            style: AppTypography.inter(fontSize: 18, fontWeight: FontWeight.w800),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'The work calendar and daily activities are coming soon.',
+            textAlign: TextAlign.center,
+            style: AppTypography.inter(fontSize: 13, color: AppColors.textSecondary),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -2103,9 +1895,6 @@ String _monthName(int month) {
   ];
   return names[(month - 1).clamp(0, 11)];
 }
-
-String _weekday(int weekday) =>
-    const ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'][weekday - 1];
 
 BoxDecoration _cardDecoration() => BoxDecoration(
   color: Colors.white,
