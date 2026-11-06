@@ -22,7 +22,7 @@ abstract final class AppTheme {
           brightness: Brightness.light,
         ).copyWith(
           primary: AppColors.primary,
-          onPrimary: AppColors.textPrimary,
+          onPrimary: Colors.white,
           primaryContainer: AppColors.lightPrimary,
           onPrimaryContainer: AppColors.textPrimary,
           secondary: AppColors.primary,

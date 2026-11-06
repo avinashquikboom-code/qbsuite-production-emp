@@ -23,10 +23,14 @@ class AuthViewModel extends AsyncNotifier<Session?> {
 
   Future<void> signIn(String email, String password) async {
     if (_busy || state.isLoading) return;
-    if (!RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$').hasMatch(email.trim()) ||
-        password.isEmpty) {
+    final identifier = email.trim();
+    final isEmail = RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$').hasMatch(identifier);
+    final isEmployeeId = RegExp(
+      r'^[A-Za-z0-9][A-Za-z0-9._-]{2,}$',
+    ).hasMatch(identifier);
+    if ((!isEmail && !isEmployeeId) || password.isEmpty) {
       state = AsyncError(
-        const AppFailure('Enter a valid email and password.'),
+        const AppFailure('Enter your employee ID, email, or mobile and password.'),
         StackTrace.current,
       );
       return;
