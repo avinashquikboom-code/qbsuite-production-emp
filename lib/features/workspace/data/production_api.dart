@@ -17,8 +17,8 @@ class ProductionApi {
     return _list(
       '/attendance/history',
       query: {
-        if (month != null) 'month': month,
-        if (year != null) 'year': year,
+        'month': ?month,
+        'year': ?year,
       },
     );
   }
