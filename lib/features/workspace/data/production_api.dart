@@ -35,6 +35,13 @@ class ProductionApi {
 
   Future<List<Map<String, dynamic>>> myOvertime() => _list('/overtime', query: {'limit': 20});
 
+  Future<Map<String, dynamic>> monthlyReports() => _object('/hrm/my-reports');
+
+  Future<String> monthlyReportUrl(int id) async {
+    final body = await _object('/hrm/my-reports/$id/download');
+    return body['url']?.toString() ?? '';
+  }
+
   Future<Map<String, dynamic>> applyOvertime(Map<String, dynamic> body) async {
     try {
       final response = await _dio.post<Object>('/overtime/my', data: body);

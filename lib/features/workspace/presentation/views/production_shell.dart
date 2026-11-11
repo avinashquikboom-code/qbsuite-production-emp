@@ -6,6 +6,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../auth/presentation/viewmodels/auth_viewmodel.dart';
 import '../providers/production_providers.dart';
+import 'monthly_reports_page.dart';
 import 'production_pages.dart';
 import 'request_overtime_sheet.dart';
 
@@ -62,6 +63,9 @@ class _ProductionShellState extends ConsumerState<ProductionShell> {
                   builder: (_) => const AttendanceLogPage(),
                 ),
               );
+            case 'Monthly Reports':
+              setState(() => _drawerItem = label);
+              Navigator.push(context, MaterialPageRoute<void>(builder: (_) => const MonthlyReportsPage()));
             case 'Request Overtime':
               setState(() => _drawerItem = label);
               showRequestOvertimeSheet(context);
@@ -281,6 +285,7 @@ class _ProductionDrawer extends ConsumerWidget {
                   _tile('Dashboard', Remix.home_5_line),
                   _section('HRM & WORKPLACE'),
                   _tile('Attendance', Remix.fingerprint_line),
+                  _tile('Monthly Reports', Remix.file_pdf_line),
                   _tile('Request Overtime', Remix.time_line),
                   _tile('Requests & Leaves', Remix.calendar_event_line),
                   _tile('Expenses & Claims', Remix.money_dollar_circle_line),
