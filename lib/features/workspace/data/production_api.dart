@@ -1,6 +1,12 @@
 import 'package:dio/dio.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/errors/app_failure.dart';
+import '../../../core/network/dio_client.dart';
+
+final productionApiProvider = Provider<ProductionApi>((ref) => ProductionApi(ref.watch(dioProvider)));
+
+final myOvertimeProvider = FutureProvider<List<Map<String, dynamic>>>((ref) => ref.watch(productionApiProvider).myOvertime());
 
 class ProductionApi {
   ProductionApi(this._dio);
@@ -26,6 +32,22 @@ class ProductionApi {
   Future<void> punchIn() => _send('/attendance/check-in');
 
   Future<void> punchOut() => _send('/attendance/check-out');
+
+  Future<List<Map<String, dynamic>>> myOvertime() => _list('/overtime', query: {'limit': 20});
+
+  Future<Map<String, dynamic>> applyOvertime(Map<String, dynamic> body) async {
+    try {
+      final response = await _dio.post<Object>('/overtime/my', data: body);
+      return _asMap(response.data);
+    } on DioException catch (error) {
+      final data = error.response?.data;
+      final message = data is Map ? data['message'] : null;
+      final text = message is List ? message.join('\n') : message?.toString();
+      throw AppFailure(text != null && text.isNotEmpty ? text : AppFailure.fromDio(error).message);
+    }
+  }
+
+  Future<void> markOvertime(int id, {required bool end}) => _send('/overtime/$id/${end ? 'end' : 'start'}');
 
   Future<List<Map<String, dynamic>>> works({String? date, String? month}) {
     return _list(

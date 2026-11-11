@@ -8,8 +8,22 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../core/utils/app_currency.dart';
 import '../../../auth/presentation/viewmodels/auth_viewmodel.dart';
+import '../../data/production_api.dart';
 import '../providers/production_providers.dart';
 import 'request_overtime_sheet.dart';
+
+String _overtimeLabel(List<Map<String, dynamic>> rows) {
+  if (rows.isEmpty) return 'Apply for Overtime';
+  final status = (rows.first['sessionStatus'] ?? rows.first['status'] ?? '').toString().toUpperCase();
+  return switch (status) {
+    'PENDING' => 'Pending Approval',
+    'APPROVED' => 'Approved',
+    'REJECTED' => 'Rejected',
+    'IN_PROGRESS' => 'End Overtime',
+    'COMPLETED' => 'Overtime Completed',
+    _ => 'Apply for Overtime',
+  };
+}
 
 class ProductionHomePage extends ConsumerWidget {
   const ProductionHomePage({
@@ -375,10 +389,29 @@ class _AttendanceCard extends ConsumerWidget {
             width: double.infinity,
             height: 48,
             child: OutlinedButton.icon(
-              onPressed: () => showRequestOvertimeSheet(context),
+              onPressed: () async {
+                final rows = ref.read(myOvertimeProvider).asData?.value ?? const <Map<String, dynamic>>[];
+                final status = rows.isEmpty ? '' : (rows.first['sessionStatus'] ?? rows.first['status'] ?? '').toString().toUpperCase();
+                final id = rows.isEmpty ? 0 : int.tryParse('${rows.first['id']}') ?? 0;
+                if (status == 'PENDING') {
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('This overtime request is waiting for admin approval.')));
+                  return;
+                }
+                if ((status == 'APPROVED' || status == 'IN_PROGRESS') && id > 0) {
+                  try {
+                    await ref.read(productionApiProvider).markOvertime(id, end: status == 'IN_PROGRESS');
+                    ref.invalidate(myOvertimeProvider);
+                  } catch (error) {
+                    if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$error')));
+                  }
+                  return;
+                }
+                await showRequestOvertimeSheet(context);
+                ref.invalidate(myOvertimeProvider);
+              },
               icon: const Icon(Remix.time_line, size: 18, color: AppColors.darkPrimary),
               label: Text(
-                'Request Overtime',
+                _overtimeLabel(ref.watch(myOvertimeProvider).asData?.value ?? const []),
                 style: AppTypography.inter(
                   fontSize: 14,
                   fontWeight: FontWeight.w700,
