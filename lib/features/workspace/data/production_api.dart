@@ -49,6 +49,20 @@ class ProductionApi {
 
   Future<void> markOvertime(int id, {required bool end}) => _send('/overtime/$id/${end ? 'end' : 'start'}');
 
+  Future<void> cancelOvertime(int id, {required String reason, String? remarks}) async {
+    try {
+      await _dio.post<Object>('/overtime/$id/cancel', data: {
+        'reason': reason,
+        if (remarks != null && remarks.trim().isNotEmpty) 'remarks': remarks.trim(),
+      });
+    } on DioException catch (error) {
+      final data = error.response?.data;
+      final message = data is Map ? data['message'] : null;
+      final text = message is List ? message.join('\n') : message?.toString();
+      throw AppFailure(text != null && text.isNotEmpty ? text : AppFailure.fromDio(error).message);
+    }
+  }
+
   Future<List<Map<String, dynamic>>> works({String? date, String? month}) {
     return _list(
       '/works/employee/calendar',

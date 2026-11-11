@@ -84,12 +84,15 @@ class _RequestOvertimeSheetState extends ConsumerState<RequestOvertimeSheet> {
     }
     setState(() => _saving = true);
     try {
+      final shift = _attendance['assignedShift'] is Map ? Map<String, dynamic>.from(_attendance['assignedShift'] as Map) : <String, dynamic>{};
+      final shiftId = int.tryParse('${shift['id']}');
       await ref.read(productionApiProvider).applyOvertime({
         'overtimeDate': '${_date.year.toString().padLeft(4, '0')}-${_date.month.toString().padLeft(2, '0')}-${_date.day.toString().padLeft(2, '0')}',
         'overtimeType': _type,
         'startTime': _clock(_start),
         'endTime': _clock(_end),
         'reason': _reason.text.trim(),
+        if (shiftId != null && shiftId > 0) 'shiftId': shiftId,
         if (_remarks.text.trim().isNotEmpty) 'employeeNotes': _remarks.text.trim(),
       });
       if (!mounted) return;

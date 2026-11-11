@@ -12,12 +12,55 @@ import '../../data/production_api.dart';
 import '../providers/production_providers.dart';
 import 'request_overtime_sheet.dart';
 
+bool _canCancelOt(Map<String, dynamic> row) {
+  final status = (row['sessionStatus'] ?? row['status'] ?? '').toString().toUpperCase();
+  if (status != 'APPROVED' || row['actualStartAt'] != null) return false;
+  final date = (row['overtimeDate'] ?? '').toString();
+  final start = DateTime.tryParse('${date.length >= 10 ? date.substring(0, 10) : date}T${row['startTime']}:00');
+  return start != null && DateTime.now().isBefore(start);
+}
+
+Future<void> _requestOtCancellation(BuildContext context, WidgetRef ref, Map<String, dynamic> row) async {
+  final reason = TextEditingController();
+  final remarks = TextEditingController();
+  final id = int.tryParse('${row['id']}') ?? 0;
+  final saved = await showModalBottomSheet<bool>(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: Colors.white,
+    builder: (sheetContext) => Padding(
+      padding: EdgeInsets.fromLTRB(20, 16, 20, 16 + MediaQuery.viewInsetsOf(sheetContext).bottom),
+      child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text('Request OT Cancellation', style: AppTypography.inter(fontSize: 18, fontWeight: FontWeight.w800)),
+        const SizedBox(height: 8),
+        Text('Are you sure you want to cancel your approved overtime request?', style: AppTypography.inter(fontSize: 13, color: AppColors.textSecondary)),
+        const SizedBox(height: 8),
+        Text('${(row['overtimeDate'] ?? '').toString().split('T').first} · ${row['overtimeType']} · ${row['startTime']} – ${row['endTime']}', style: AppTypography.inter(fontWeight: FontWeight.w700)),
+        TextField(controller: reason, maxLength: 250, decoration: const InputDecoration(labelText: 'Reason for cancellation')),
+        TextField(controller: remarks, maxLength: 250, decoration: const InputDecoration(labelText: 'Remarks (optional)')),
+        SizedBox(width: double.infinity, child: FilledButton(onPressed: () { if (reason.text.trim().isEmpty) return; Navigator.pop(sheetContext, true); }, child: const Text('Submit cancellation'))),
+      ]),
+    ),
+  );
+  if (saved != true || !context.mounted) return;
+  try {
+    await ref.read(productionApiProvider).cancelOvertime(id, reason: reason.text.trim(), remarks: remarks.text);
+    ref.invalidate(myOvertimeProvider);
+    if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Cancellation request submitted.')));
+  } catch (error) {
+    if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$error')));
+  }
+}
+
 String _overtimeLabel(List<Map<String, dynamic>> rows) {
   if (rows.isEmpty) return 'Apply for Overtime';
   final status = (rows.first['sessionStatus'] ?? rows.first['status'] ?? '').toString().toUpperCase();
   return switch (status) {
     'PENDING' => 'Pending Approval',
     'APPROVED' => 'Approved',
+    'CANCELLATION_REQUESTED' => 'Cancellation Requested',
+    'CANCELLATION_REJECTED' => 'Cancellation Rejected',
+    'CANCELLED' => 'Cancelled',
     'REJECTED' => 'Rejected',
     'IN_PROGRESS' => 'End Overtime',
     'COMPLETED' => 'Overtime Completed',
@@ -397,7 +440,11 @@ class _AttendanceCard extends ConsumerWidget {
                   ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('This overtime request is waiting for admin approval.')));
                   return;
                 }
-                if ((status == 'APPROVED' || status == 'IN_PROGRESS') && id > 0) {
+                if (status == 'CANCELLATION_REQUESTED') {
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Your cancellation request is waiting for admin review.')));
+                  return;
+                }
+                if ((status == 'APPROVED' || status == 'CANCELLATION_REJECTED' || status == 'IN_PROGRESS') && id > 0) {
                   try {
                     await ref.read(productionApiProvider).markOvertime(id, end: status == 'IN_PROGRESS');
                     ref.invalidate(myOvertimeProvider);
@@ -424,6 +471,11 @@ class _AttendanceCard extends ConsumerWidget {
               ),
             ),
           ),
+          if ((ref.watch(myOvertimeProvider).asData?.value ?? const <Map<String, dynamic>>[]).isNotEmpty && _canCancelOt(ref.watch(myOvertimeProvider).asData!.value.first))
+            TextButton(
+              onPressed: () => _requestOtCancellation(context, ref, ref.read(myOvertimeProvider).asData!.value.first),
+              child: Text('Request OT Cancellation', style: AppTypography.inter(fontWeight: FontWeight.w700, color: const Color(0xFFB91C1C))),
+            ),
         ],
       ),
     );
