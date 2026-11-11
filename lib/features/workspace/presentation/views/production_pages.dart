@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -12,8 +14,20 @@ import '../../data/production_api.dart';
 import '../providers/production_providers.dart';
 import 'request_overtime_sheet.dart';
 
+bool _otWindowOpen(Map<String, dynamic> row) {
+  final date = (row['overtimeDate'] ?? '').toString();
+  final day = date.length >= 10 ? date.substring(0, 10) : date;
+  final start = DateTime.tryParse('${day}T${row['startTime']}:00');
+  final end = DateTime.tryParse('${day}T${row['endTime']}:00');
+  if (start == null || end == null) return false;
+  final finish = end.isAfter(start) ? end : end.add(const Duration(days: 1));
+  final now = DateTime.now();
+  return !now.isBefore(start) && !now.isAfter(finish);
+}
+
 bool _canCancelOt(Map<String, dynamic> row) {
   final status = (row['sessionStatus'] ?? row['status'] ?? '').toString().toUpperCase();
+  if (status == 'PENDING') return true;
   if (status != 'APPROVED' || row['actualStartAt'] != null) return false;
   final date = (row['overtimeDate'] ?? '').toString();
   final start = DateTime.tryParse('${date.length >= 10 ? date.substring(0, 10) : date}T${row['startTime']}:00');
@@ -52,20 +66,73 @@ Future<void> _requestOtCancellation(BuildContext context, WidgetRef ref, Map<Str
   }
 }
 
-String _overtimeLabel(List<Map<String, dynamic>> rows) {
-  if (rows.isEmpty) return 'Apply for Overtime';
-  final status = (rows.first['sessionStatus'] ?? rows.first['status'] ?? '').toString().toUpperCase();
-  return switch (status) {
-    'PENDING' => 'Pending Approval',
-    'APPROVED' => 'Approved',
-    'CANCELLATION_REQUESTED' => 'Cancellation Requested',
-    'CANCELLATION_REJECTED' => 'Cancellation Rejected',
-    'CANCELLED' => 'Cancelled',
-    'REJECTED' => 'Rejected',
-    'IN_PROGRESS' => 'End Overtime',
-    'COMPLETED' => 'Overtime Completed',
-    _ => 'Apply for Overtime',
-  };
+class _ProductionOtActions extends StatelessWidget {
+  const _ProductionOtActions({required this.rows, required this.onApply, required this.onCancel});
+  final List<Map<String, dynamic>> rows;
+  final VoidCallback onApply;
+  final VoidCallback onCancel;
+
+  @override
+  Widget build(BuildContext context) {
+    final row = rows.isEmpty ? null : rows.first;
+    final status = row == null ? '' : (row['sessionStatus'] ?? row['status'] ?? '').toString().toUpperCase();
+    final canCancel = row != null && _canCancelOt(row);
+    final start = row != null && (status == 'APPROVED' || status == 'CANCELLATION_REJECTED') && _otWindowOpen(row);
+    if (status == 'IN_PROGRESS' && row != null) {
+      return Column(children: [
+        _ProductionOtTimer(row: row),
+        const SizedBox(height: 8),
+        SizedBox(width: double.infinity, height: 48, child: FilledButton(onPressed: onApply, child: Text('End OT', style: AppTypography.inter(fontWeight: FontWeight.w700)))),
+      ]);
+    }
+    return Row(children: [
+      Expanded(child: SizedBox(height: 48, child: OutlinedButton(
+        onPressed: onApply,
+        style: OutlinedButton.styleFrom(side: const BorderSide(color: AppColors.primary, width: 1.4), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))),
+        child: Text(start ? 'Start OT' : 'Apply OT', style: AppTypography.inter(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.darkPrimary)),
+      ))),
+      const SizedBox(width: 10),
+      Expanded(child: SizedBox(height: 48, child: OutlinedButton(
+        onPressed: canCancel ? onCancel : null,
+        style: OutlinedButton.styleFrom(side: BorderSide(color: canCancel ? const Color(0xFFB91C1C) : const Color(0xFFE2E8F0), width: 1.4), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))),
+        child: Text('Cancel OT', style: AppTypography.inter(fontSize: 14, fontWeight: FontWeight.w700, color: canCancel ? const Color(0xFFB91C1C) : const Color(0xFF94A3B8))),
+      ))),
+    ]);
+  }
+}
+
+class _ProductionOtTimer extends StatefulWidget {
+  const _ProductionOtTimer({required this.row});
+  final Map<String, dynamic> row;
+  @override
+  State<_ProductionOtTimer> createState() => _ProductionOtTimerState();
+}
+
+class _ProductionOtTimerState extends State<_ProductionOtTimer> {
+  Timer? _ticker;
+  @override
+  void initState() {
+    super.initState();
+    _ticker = Timer.periodic(const Duration(seconds: 1), (_) { if (mounted) setState(() {}); });
+  }
+  @override
+  void dispose() { _ticker?.cancel(); super.dispose(); }
+  @override
+  Widget build(BuildContext context) {
+    final start = DateTime.tryParse('${widget.row['actualStartAt'] ?? ''}');
+    final server = DateTime.tryParse('${widget.row['serverNow'] ?? ''}');
+    final offset = start == null || server == null ? Duration.zero : server.difference(DateTime.now());
+    final elapsed = start == null ? Duration.zero : DateTime.now().add(offset).difference(start);
+    final worked = elapsed.isNegative ? 0 : elapsed.inMinutes;
+    final approved = int.tryParse('${widget.row['approvedMinutes'] ?? widget.row['totalMinutes'] ?? 0}') ?? 0;
+    String clock(int minutes) { final safe = minutes < 0 ? 0 : minutes; return '${safe ~/ 60}h ${(safe % 60).toString().padLeft(2, '0')}m'; }
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(color: const Color(0xFFF0FDF4), borderRadius: BorderRadius.circular(14), border: Border.all(color: const Color(0xFFBBF7D0))),
+      child: Text('OT In Progress · worked ${clock(worked)} · approved ${clock(approved)} · remaining ${clock(approved - worked)}', style: AppTypography.inter(fontSize: 12, fontWeight: FontWeight.w700, color: const Color(0xFF166534))),
+    );
+  }
 }
 
 class ProductionHomePage extends ConsumerWidget {
@@ -428,54 +495,33 @@ class _AttendanceCard extends ConsumerWidget {
             ),
           ),
           const SizedBox(height: 10),
-          SizedBox(
-            width: double.infinity,
-            height: 48,
-            child: OutlinedButton.icon(
-              onPressed: () async {
-                final rows = ref.read(myOvertimeProvider).asData?.value ?? const <Map<String, dynamic>>[];
-                final status = rows.isEmpty ? '' : (rows.first['sessionStatus'] ?? rows.first['status'] ?? '').toString().toUpperCase();
-                final id = rows.isEmpty ? 0 : int.tryParse('${rows.first['id']}') ?? 0;
-                if (status == 'PENDING') {
-                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('This overtime request is waiting for admin approval.')));
-                  return;
-                }
-                if (status == 'CANCELLATION_REQUESTED') {
-                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Your cancellation request is waiting for admin review.')));
-                  return;
-                }
-                if ((status == 'APPROVED' || status == 'CANCELLATION_REJECTED' || status == 'IN_PROGRESS') && id > 0) {
-                  try {
-                    await ref.read(productionApiProvider).markOvertime(id, end: status == 'IN_PROGRESS');
-                    ref.invalidate(myOvertimeProvider);
-                  } catch (error) {
-                    if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$error')));
-                  }
-                  return;
-                }
-                await showRequestOvertimeSheet(context);
+          _ProductionOtActions(
+            rows: ref.watch(myOvertimeProvider).asData?.value ?? const [],
+            onApply: () async {
+            final rows = ref.read(myOvertimeProvider).asData?.value ?? const <Map<String, dynamic>>[];
+            final status = rows.isEmpty ? '' : (rows.first['sessionStatus'] ?? rows.first['status'] ?? '').toString().toUpperCase();
+            final id = rows.isEmpty ? 0 : int.tryParse('${rows.first['id']}') ?? 0;
+            final window = rows.isNotEmpty && _otWindowOpen(rows.first);
+            if (status == 'CANCELLATION_REQUESTED') {
+              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Your cancellation request is waiting for admin review.')));
+              return;
+            }
+            if ((status == 'IN_PROGRESS' || ((status == 'APPROVED' || status == 'CANCELLATION_REJECTED') && window)) && id > 0) {
+              try {
+                await ref.read(productionApiProvider).markOvertime(id, end: status == 'IN_PROGRESS');
                 ref.invalidate(myOvertimeProvider);
-              },
-              icon: const Icon(Remix.time_line, size: 18, color: AppColors.darkPrimary),
-              label: Text(
-                _overtimeLabel(ref.watch(myOvertimeProvider).asData?.value ?? const []),
-                style: AppTypography.inter(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.darkPrimary,
-                ),
-              ),
-              style: OutlinedButton.styleFrom(
-                side: const BorderSide(color: AppColors.primary, width: 1.4),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-              ),
-            ),
-          ),
-          if ((ref.watch(myOvertimeProvider).asData?.value ?? const <Map<String, dynamic>>[]).isNotEmpty && _canCancelOt(ref.watch(myOvertimeProvider).asData!.value.first))
-            TextButton(
-              onPressed: () => _requestOtCancellation(context, ref, ref.read(myOvertimeProvider).asData!.value.first),
-              child: Text('Request OT Cancellation', style: AppTypography.inter(fontWeight: FontWeight.w700, color: const Color(0xFFB91C1C))),
-            ),
+              } catch (error) {
+                if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$error')));
+              }
+              return;
+            }
+            await showRequestOvertimeSheet(context);
+            ref.invalidate(myOvertimeProvider);
+          }, onCancel: () {
+            final rows = ref.read(myOvertimeProvider).asData?.value ?? const <Map<String, dynamic>>[];
+            if (rows.isEmpty || !_canCancelOt(rows.first)) return;
+            _requestOtCancellation(context, ref, rows.first);
+          }),
         ],
       ),
     );
