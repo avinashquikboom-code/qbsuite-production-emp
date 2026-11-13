@@ -8,8 +8,8 @@ import 'package:remixicon/remixicon.dart';
 import '../../../../core/config/app_config.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_typography.dart';
-import '../../../../core/utils/app_currency.dart';
 import '../../../auth/presentation/viewmodels/auth_viewmodel.dart';
+import '../../../notifications/presentation/views/notifications_view.dart';
 import '../../data/production_api.dart';
 import '../providers/production_providers.dart';
 import 'employee_screens.dart';
@@ -143,6 +143,7 @@ class ProductionHomePage extends ConsumerWidget {
     required this.onOpenTasks,
   });
   final VoidCallback onOpenDrawer;
+  // ignore: unused_field
   final VoidCallback onOpenTasks;
 
   @override
@@ -158,67 +159,94 @@ class ProductionHomePage extends ConsumerWidget {
         : hour < 17
         ? 'Good Afternoon,'
         : 'Good Evening,';
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(18, 12, 18, 24),
+    return Column(
       children: [
-        Text(
-          AppConfig.title,
-          style: AppTypography.inter(
-            fontSize: 1,
-            height: 1,
-            color: Colors.transparent,
+        Material(
+          color: Colors.white,
+          child: SizedBox(
+            height: kToolbarHeight,
+            child: Row(
+              children: [
+                const SizedBox(width: 16),
+                Container(
+                  width: 32,
+                  height: 32,
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [AppColors.primary, AppColors.darkPrimary],
+                    ),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(
+                    Remix.building_2_fill,
+                    color: Colors.white,
+                    size: 18,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        AppConfig.title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppTypography.inter(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w800,
+                          height: 1.1,
+                        ),
+                      ),
+                      Text(
+                        'EMPLOYEE WORKSPACE',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppTypography.inter(
+                          fontSize: 9,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 1.2,
+                          color: AppColors.darkPrimary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                IconButton(
+                  tooltip: 'Notifications',
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute<void>(
+                        builder: (_) => const NotificationsView(),
+                      ),
+                    );
+                  },
+                  icon: const Icon(
+                    Remix.notification_3_line,
+                    color: AppColors.textPrimary,
+                    size: 24,
+                  ),
+                ),
+                IconButton(
+                  tooltip: 'Open Menu',
+                  onPressed: onOpenDrawer,
+                  icon: const Icon(
+                    Remix.menu_line,
+                    color: AppColors.textPrimary,
+                    size: 24,
+                  ),
+                ),
+                const SizedBox(width: 4),
+              ],
+            ),
           ),
         ),
-        Row(
-          children: [
-            Container(
-              width: 32,
-              height: 32,
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [AppColors.primary, AppColors.darkPrimary],
-                ),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: const Icon(
-                Remix.building_2_fill,
-                color: Colors.white,
-                size: 18,
-              ),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'QB Suite',
-                    style: AppTypography.inter(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w800,
-                      height: 1.1,
-                    ),
-                  ),
-                  Text(
-                    'EMPLOYEE WORKSPACE',
-                    style: AppTypography.inter(
-                      fontSize: 9,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: 1.1,
-                      color: AppColors.darkPrimary,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const Icon(Remix.notification_3_line, color: AppColors.textPrimary),
-            IconButton(
-              onPressed: onOpenDrawer,
-              icon: const Icon(Remix.menu_line, color: AppColors.textPrimary),
-            ),
-          ],
-        ),
-        const SizedBox(height: 16),
+        Expanded(
+          child: ListView(
+      padding: const EdgeInsets.fromLTRB(18, 18, 18, 24),
+      children: [
         Row(
           children: [
             Expanded(
@@ -275,6 +303,7 @@ class ProductionHomePage extends ConsumerWidget {
         ),
         const SizedBox(height: 16),
         const _EmployeeCalendarSoon(),
+        /*
         const SizedBox(height: 16),
         Container(
           padding: const EdgeInsets.all(14),
@@ -337,6 +366,10 @@ class ProductionHomePage extends ConsumerWidget {
                 ),
               ),
             ],
+          ),
+        ),
+        */
+      ],
           ),
         ),
       ],
@@ -839,13 +872,14 @@ class ProductionWorkPage extends ConsumerStatefulWidget {
 }
 
 class _ProductionWorkPageState extends ConsumerState<ProductionWorkPage> {
-  String _filter = 'Today';
+  String _filter = 'All Dates';
+  DateTime? _pickedDate;
 
   @override
   Widget build(BuildContext context) {
     final works = ref.watch(worksProvider);
     final profile = ref.watch(employeeProfileProvider).asData?.value ?? {};
-    final designation = field(profile, const ['designation'], 'Senior Photographer');
+    final designation = field(profile, const ['designation'], '');
     return works.when(
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (error, _) => _ErrorCard(
@@ -853,205 +887,303 @@ class _ProductionWorkPageState extends ConsumerState<ProductionWorkPage> {
         onRetry: () => ref.invalidate(worksProvider),
       ),
       data: (items) {
-        final visible = items.where((item) => _matchesWorkFilter(item, _filter)).toList();
-        final pending = visible.where((item) => _status(item) == 'PENDING').length;
-        final progress = visible
-            .where((item) => _status(item).contains('PROGRESS'))
-            .length;
-        final done = visible.where((item) => _status(item) == 'COMPLETED').length;
-        return ListView(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+        final visible = items.where((item) => _matchesWorkFilter(item, _filter, custom: _pickedDate)).toList();
+        final now = DateTime.now();
+        final today = DateTime(now.year, now.month, now.day);
+        int count(bool Function(Map<String, dynamic>) test) => items.where(test).length;
+        final width = MediaQuery.sizeOf(context).width;
+        final compact = width < 360;
+        final cardWidth = (width * 0.30).clamp(104.0, 128.0);
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text(
-              'Production Overview',
-              style: AppTypography.inter(fontSize: 26, fontWeight: FontWeight.w800),
+            Container(
+              color: Colors.white,
+              padding: EdgeInsets.fromLTRB(compact ? 12 : 16, 12, compact ? 12 : 16, 10),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Production Overview',
+                    style: AppTypography.inter(fontSize: 18, fontWeight: FontWeight.w700, height: 1.15),
+                  ),
+                  const SizedBox(height: 10),
+                  Row(
+                    children: [
+                      Flexible(
+                        child: Text(
+                          'Authorized Modules',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: AppTypography.inter(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.textSecondary),
+                        ),
+                      ),
+                      if (designation.isNotEmpty) ...[
+                        const SizedBox(width: 6),
+                        Flexible(
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: AppColors.lightPrimary,
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(color: AppColors.primary.withValues(alpha: 0.25)),
+                            ),
+                            child: Text(
+                              designation.toUpperCase(),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: AppTypography.inter(fontSize: 10.5, fontWeight: FontWeight.w800, color: AppColors.darkPrimary),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ],
+              ),
             ),
-            const SizedBox(height: 12),
-            Wrap(
-              crossAxisAlignment: WrapCrossAlignment.center,
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                Text(
-                  'Supervisory Access',
-                  style: AppTypography.inter(
-                    color: AppColors.textSecondary,
-                    fontWeight: FontWeight.w600,
+            const Divider(height: 1, color: AppColors.border),
+            Container(
+              color: Colors.white,
+              padding: EdgeInsets.fromLTRB(compact ? 12 : 16, 10, compact ? 12 : 16, 12),
+              child: Column(
+                children: [
+                  Row(
+                    children: [
+                      const Icon(Remix.dashboard_3_line, size: 15, color: AppColors.darkPrimary),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          'Production Metrics',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: AppTypography.inter(fontSize: 13.5, fontWeight: FontWeight.w800),
+                        ),
+                      ),
+                      Text(
+                        '${visible.length} filtered items',
+                        style: AppTypography.inter(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.textSecondary),
+                      ),
+                    ],
                   ),
-                ),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: AppColors.lightPrimary,
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Text(
-                    designation.toUpperCase(),
-                    style: AppTypography.inter(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.darkPrimary,
+                  const SizedBox(height: 8),
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: [
+                        _metricCard(Remix.task_line, const Color(0xFF0284C7), const Color(0xFFE0F2FE), 'Total', items.length, cardWidth),
+                        _metricCard(Remix.loader_2_line, const Color(0xFF2563EB), const Color(0xFFDBEAFE), 'In Progress', count((item) => _status(item).contains('PROGRESS')), cardWidth),
+                        _metricCard(Remix.time_line, const Color(0xFFD97706), const Color(0xFFFEF3C7), 'Pending', count((item) => _status(item) == 'PENDING'), cardWidth),
+                        _metricCard(Remix.checkbox_circle_line, const Color(0xFF16A34A), const Color(0xFFDCFCE7), 'Completed', count((item) => _status(item) == 'COMPLETED'), cardWidth),
+                        _metricCard(Remix.error_warning_line, const Color(0xFFDC2626), const Color(0xFFFEE2E2), 'Blocked', count((item) => _status(item).contains('BLOCK') || _status(item).contains('CANCEL')), cardWidth),
+                        _metricCard(Remix.calendar_check_line, const Color(0xFF7C3AED), const Color(0xFFEDE9FE), "Today's Work", count((item) => _sameDay(workDate(item) ?? DateTime(2000), today)), cardWidth),
+                        _metricCard(Remix.alarm_warning_line, const Color(0xFFEA580C), const Color(0xFFFFEDD5), 'Overdue', count((item) {
+                          final date = workDate(item);
+                          return date != null && date.isBefore(today) && _status(item) != 'COMPLETED';
+                        }), cardWidth),
+                      ],
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                const Icon(Remix.pie_chart_line, size: 18, color: AppColors.textSecondary),
-                const SizedBox(width: 6),
-                Expanded(
-                  child: Text(
-                    'Production Metrics',
-                    style: AppTypography.inter(fontWeight: FontWeight.w800),
-                  ),
-                ),
-                Text(
-                  '${visible.length} filtered items',
-                  style: AppTypography.inter(fontSize: 12, color: AppColors.textSecondary),
-                ),
-              ],
-            ),
-            const SizedBox(height: 10),
-            SizedBox(
-              height: 92,
-              child: ListView(
+            Container(
+              color: Colors.white,
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+              child: SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
-                children: [
-                  _metricCard(Remix.checkbox_line, const Color(0xFF2563EB), 'Total', visible.length),
-                  _metricCard(Remix.sparkling_line, const Color(0xFF2563EB), 'In Progress', progress),
-                  _metricCard(Remix.time_line, const Color(0xFFF59E0B), 'Pending', pending),
-                  _metricCard(Remix.checkbox_circle_line, AppColors.darkPrimary, 'Completed', done),
-                ],
-              ),
-            ),
-            const SizedBox(height: 12),
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                children: [
-                  for (final label in ['Today', 'Tomorrow', 'This Week', 'Pick Date', 'All']) ...[
-                    _filterChip(label),
-                    const SizedBox(width: 8),
-                  ],
-                ],
-              ),
-            ),
-            const SizedBox(height: 28),
-            if (visible.isEmpty)
-              Padding(
-                padding: const EdgeInsets.only(top: 36),
-                child: Column(
+                child: Row(
                   children: [
-                    Container(
-                      width: 72,
-                      height: 72,
-                      decoration: const BoxDecoration(
-                        color: Color(0xFFF1F5F9),
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(
-                        Remix.file_list_3_line,
-                        color: Color(0xFF94A3B8),
-                        size: 32,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      'No production tasks found',
-                      style: AppTypography.inter(fontSize: 18, fontWeight: FontWeight.w800),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      'No production work matches the selected filters for your workspace.',
-                      textAlign: TextAlign.center,
-                      style: AppTypography.inter(color: AppColors.textSecondary),
-                    ),
+                    _filterChip('All Dates'),
+                    _filterChip('Today'),
+                    _filterChip('Tomorrow'),
+                    _filterChip('This Week'),
+                    _filterChip('Pick Date', icon: Remix.calendar_line),
                   ],
                 ),
-              )
-            else
-              ...visible.map(
-                (item) => Card(
-                  child: ListTile(
-                    title: Text(workTitle(item)),
-                    subtitle: Text('${workCustomer(item)} • ${_status(item)}'),
-                    trailing: const Text('View'),
-                    onTap: () => Navigator.push(
-                      context,
-                      MaterialPageRoute<void>(
-                        builder: (_) => ProductionTaskPage(task: item),
-                      ),
-                    ),
-                  ),
-                ),
               ),
+            ),
+            const Divider(height: 1, color: AppColors.border),
+            Expanded(
+              child: visible.isEmpty
+                  ? Center(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 24),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(18),
+                              decoration: const BoxDecoration(color: Color(0xFFF1F5F9), shape: BoxShape.circle),
+                              child: const Icon(Remix.file_list_3_line, size: 38, color: Color(0xFF94A3B8)),
+                            ),
+                            const SizedBox(height: 14),
+                            Text('No work assigned', textAlign: TextAlign.center, style: AppTypography.inter(fontSize: compact ? 15 : 16, fontWeight: FontWeight.w700)),
+                            const SizedBox(height: 6),
+                            Text(
+                              'Your assigned activities will appear here.',
+                              textAlign: TextAlign.center,
+                              style: AppTypography.inter(fontSize: 13.5, color: AppColors.textSecondary),
+                            ),
+                          ],
+                        ),
+                      ),
+                    )
+                  : ListView(
+                      padding: EdgeInsets.fromLTRB(compact ? 12 : 16, 14, compact ? 12 : 16, 24),
+                      children: [for (final item in visible) _workCard(item)],
+                    ),
+            ),
           ],
         );
       },
     );
   }
 
-  Widget _filterChip(String label) {
+  Future<void> _pickDate() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _pickedDate ?? DateTime.now(),
+      firstDate: DateTime.now().subtract(const Duration(days: 365)),
+      lastDate: DateTime.now().add(const Duration(days: 365)),
+    );
+    if (picked == null) return;
+    setState(() {
+      _pickedDate = picked;
+      _filter = 'Pick Date';
+    });
+  }
+
+  Widget _filterChip(String label, {IconData? icon}) {
     final selected = _filter == label;
-    return InkWell(
-      onTap: () => setState(() => _filter = label),
-      borderRadius: BorderRadius.circular(20),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-        decoration: BoxDecoration(
-          color: selected ? AppColors.actionGreen : Colors.white,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: selected ? AppColors.actionGreen : AppColors.border),
-        ),
-        child: Text(
-          label,
-          style: AppTypography.inter(
-            fontWeight: FontWeight.w700,
-            color: selected ? Colors.white : AppColors.textPrimary,
+    final text = label == 'Pick Date' && selected && _pickedDate != null
+        ? '${_pickedDate!.day} ${_monthName(_pickedDate!.month).substring(0, 3)} ${_pickedDate!.year}'
+        : label;
+    return Padding(
+      padding: const EdgeInsets.only(right: 6),
+      child: InkWell(
+        onTap: label == 'Pick Date' ? _pickDate : () => setState(() => _filter = label),
+        borderRadius: BorderRadius.circular(20),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+          decoration: BoxDecoration(
+            color: selected ? AppColors.primary : const Color(0xFFF1F5F9),
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (icon != null) ...[
+                Icon(icon, size: 12, color: selected ? Colors.white : const Color(0xFF64748B)),
+                const SizedBox(width: 4),
+              ],
+              Text(
+                text,
+                style: AppTypography.inter(
+                  fontSize: 11.5,
+                  fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
+                  color: selected ? Colors.white : AppColors.textPrimary,
+                ),
+              ),
+            ],
           ),
         ),
       ),
     );
   }
 
-  Widget _metricCard(IconData icon, Color color, String label, int value) {
+  Widget _workCard(Map<String, dynamic> item) {
+    final status = _status(item);
+    final color = status == 'COMPLETED'
+        ? AppColors.darkPrimary
+        : status.contains('PROGRESS')
+        ? const Color(0xFF2563EB)
+        : const Color(0xFFD97706);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Material(
+        color: Colors.white,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: const BorderSide(color: AppColors.border),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute<void>(builder: (_) => ProductionTaskPage(task: item)),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(14),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        workTitle(item),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppTypography.inter(fontSize: 15, fontWeight: FontWeight.w700, height: 1.25),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(color: color.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(20)),
+                      child: Text(status, style: AppTypography.inter(fontSize: 10, fontWeight: FontWeight.w800, color: color)),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  workCustomer(item),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTypography.inter(fontSize: 13, color: AppColors.textSecondary),
+                ),
+                const SizedBox(height: 4),
+                Text(workWhen(item), style: AppTypography.inter(fontSize: 12, color: AppColors.textSecondary)),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _metricCard(IconData icon, Color color, Color background, String label, int value, double width) {
     return Container(
-      width: 116,
-      margin: const EdgeInsets.only(right: 10),
-      padding: const EdgeInsets.all(12),
+      width: width,
+      margin: const EdgeInsets.only(right: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.border),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: background),
+        boxShadow: [BoxShadow(color: color.withValues(alpha: 0.06), blurRadius: 8, offset: const Offset(0, 2))],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Icon(icon, size: 16, color: color),
-              const SizedBox(width: 6),
+              Icon(icon, size: 13, color: color),
+              const SizedBox(width: 4),
               Expanded(
                 child: Text(
                   label,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: AppTypography.inter(fontSize: 12, color: AppColors.textSecondary),
+                  style: AppTypography.inter(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.textSecondary),
                 ),
               ),
             ],
           ),
-          const Spacer(),
-          Text(
-            '$value',
-            style: AppTypography.inter(
-              fontSize: 22,
-              fontWeight: FontWeight.w800,
-              color: color,
-            ),
-          ),
+          const SizedBox(height: 6),
+          Text('$value', style: AppTypography.inter(fontSize: 22, fontWeight: FontWeight.w800, color: color, height: 1.1)),
         ],
       ),
     );
@@ -1091,25 +1223,28 @@ class _ProductionTaskPageState extends ConsumerState<ProductionTaskPage> {
   @override
   Widget build(BuildContext context) {
     final task = widget.task;
+    final compact = MediaQuery.sizeOf(context).width < 360;
     return Scaffold(
-      appBar: AppBar(title: const Text('Task Details')),
+      appBar: AppBar(title: Text('Task Details', style: AppTypography.inter(fontWeight: FontWeight.w700, fontSize: 18))),
       body: ListView(
         padding: EdgeInsets.fromLTRB(
+          compact ? 12 : 16,
           16,
-          16,
-          16,
+          compact ? 12 : 16,
           16 + MediaQuery.viewInsetsOf(context).bottom,
         ),
         children: [
           Text(
             workTitle(task),
-            style: AppTypography.inter(fontSize: 22, fontWeight: FontWeight.w800),
+            style: AppTypography.inter(fontSize: compact ? 18 : 22, fontWeight: FontWeight.w800, height: 1.2),
           ),
-          Text(workCustomer(task)),
+          const SizedBox(height: 6),
+          Text(workCustomer(task), style: AppTypography.inter(fontSize: 14, color: AppColors.textSecondary)),
           const SizedBox(height: 8),
-          Text('Status: ${_status(task)}'),
-          Text('When: ${workWhen(task)}'),
-          Text(field(task, const ['description', 'notes', 'instructions'], '')),
+          Text('Status: ${_status(task)}', style: AppTypography.inter(fontSize: 14)),
+          Text('When: ${workWhen(task)}', style: AppTypography.inter(fontSize: 14)),
+          const SizedBox(height: 8),
+          Text(field(task, const ['description', 'notes', 'instructions'], ''), style: AppTypography.inter(fontSize: 14, height: 1.4)),
           const SizedBox(height: 12),
           TextField(
             controller: _notes,
@@ -1120,14 +1255,20 @@ class _ProductionTaskPageState extends ConsumerState<ProductionTaskPage> {
             ),
           ),
           const SizedBox(height: 12),
-          FilledButton(
-            onPressed: _saving ? null : () => _update('IN_PROGRESS'),
-            child: const Text('Start Task'),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton(
+              onPressed: _saving ? null : () => _update('IN_PROGRESS'),
+              child: Text('Start Task', style: AppTypography.inter(fontWeight: FontWeight.w700)),
+            ),
           ),
           const SizedBox(height: 8),
-          OutlinedButton(
-            onPressed: _saving ? null : () => _update('COMPLETED'),
-            child: const Text('Submit Completed Work'),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton(
+              onPressed: _saving ? null : () => _update('COMPLETED'),
+              child: Text('Submit Completed Work', textAlign: TextAlign.center, style: AppTypography.inter(fontWeight: FontWeight.w700)),
+            ),
           ),
         ],
       ),
@@ -1745,37 +1886,73 @@ class ProductionProfilePage extends ConsumerWidget {
               Navigator.push(context, MaterialPageRoute<void>(builder: (_) => const AccountSettingsScreen()));
             }),
             const SizedBox(height: 14),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(16),
-              decoration: _softCard(),
-              child: slips.when(
-                loading: () => const LinearProgressIndicator(),
-                error: (error, _) => _payslipError(ref),
-                data: (items) => items.isEmpty
-                    ? Text(
-                        'No payslips yet',
-                        style: AppTypography.inter(color: AppColors.textSecondary),
-                      )
-                    : Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Recent Payslips',
-                            style: AppTypography.inter(fontWeight: FontWeight.w800),
-                          ),
-                          for (final slip in items.take(4))
-                            ListTile(
-                              contentPadding: EdgeInsets.zero,
-                              title: Text(field(slip, const ['month', 'period'], 'Payslip')),
-                              trailing: Text(
-                                AppCurrency.format(
-                                  num.tryParse('${slip['netSalary'] ?? slip['amount'] ?? 0}') ?? 0,
-                                ),
+            Material(
+              color: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+                side: const BorderSide(color: AppColors.border),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: slips.when(
+                  loading: () => const Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Recent Payslips'),
+                      SizedBox(height: 12),
+                      LinearProgressIndicator(),
+                    ],
+                  ),
+                  error: (error, _) => _payslipError(ref),
+                  data: (items) {
+                    final recent = items.take(2).toList();
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                'Recent Payslips',
+                                style: AppTypography.inter(fontSize: 14, fontWeight: FontWeight.w700),
                               ),
                             ),
-                        ],
-                      ),
+                            if (items.isNotEmpty)
+                              GestureDetector(
+                                onTap: () => Navigator.push(context, MaterialPageRoute<void>(builder: (_) => const SalarySlipsScreen())),
+                                child: Text('View All', style: AppTypography.inter(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.primary)),
+                              ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        if (recent.isEmpty)
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
+                            decoration: BoxDecoration(
+                              color: AppColors.background,
+                              borderRadius: BorderRadius.circular(14),
+                              border: Border.all(color: AppColors.border.withValues(alpha: 0.6)),
+                            ),
+                            child: Column(
+                              children: [
+                                const Icon(Remix.receipt_line, size: 32, color: Color(0xFF94A3B8)),
+                                const SizedBox(height: 8),
+                                Text('No payslips available yet.', style: AppTypography.inter(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textSecondary)),
+                                const SizedBox(height: 2),
+                                Text('Your generated payslips will appear here.', style: AppTypography.inter(fontSize: 11.5, color: const Color(0xFF94A3B8))),
+                              ],
+                            ),
+                          )
+                        else
+                          for (var index = 0; index < recent.length; index++) ...[
+                            if (index > 0) const Divider(height: 1),
+                            _recentPayslipTile(context, recent[index]),
+                          ],
+                      ],
+                    );
+                  },
+                ),
               ),
             ),
             const SizedBox(height: 16),
@@ -1795,7 +1972,7 @@ class ProductionProfilePage extends ConsumerWidget {
             ),
             const SizedBox(height: 10),
             Text(
-              'QB Suite Employee Mobile v1.0.0',
+              'QB Suite Production v1.0.0',
               textAlign: TextAlign.center,
               style: AppTypography.inter(fontSize: 12, color: AppColors.textSecondary),
             ),
@@ -2188,11 +2365,45 @@ String _profileInitials(String name) {
   return letters.isEmpty ? 'E' : letters.toUpperCase();
 }
 
+Widget _recentPayslipTile(BuildContext context, Map<String, dynamic> slip) {
+  final net = num.tryParse('${slip['netSalary'] ?? slip['netPay'] ?? slip['amount'] ?? 0}') ?? 0;
+  final month = field(slip, const ['month', 'period'], 'Payslip');
+  final paid = _paidOn(slip['paidOn'] ?? slip['disbursedOn'] ?? slip['date'] ?? slip['createdAt']);
+  void open() => Navigator.push(context, MaterialPageRoute<void>(builder: (_) => PayslipScreen(slip: slip)));
+  return ListTile(
+    contentPadding: EdgeInsets.zero,
+    onTap: open,
+    leading: Container(
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(color: AppColors.lightPrimary, borderRadius: BorderRadius.circular(12)),
+      child: const Icon(Remix.receipt_line, color: AppColors.primary, size: 20),
+    ),
+    title: Text(month, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppTypography.inter(fontWeight: FontWeight.w700, fontSize: 14)),
+    subtitle: Text(
+      '₹ ${net.toStringAsFixed(0)} Net • Paid on $paid',
+      maxLines: 2,
+      overflow: TextOverflow.ellipsis,
+      style: AppTypography.inter(color: AppColors.textSecondary, fontSize: 12),
+    ),
+    trailing: IconButton(
+      icon: const Icon(Remix.download_2_line, color: AppColors.primary, size: 20),
+      onPressed: open,
+    ),
+  );
+}
+
+String _paidOn(Object? raw) {
+  final parsed = DateTime.tryParse('$raw');
+  if (parsed == null) return 'Recent';
+  const months = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  return '${parsed.day.toString().padLeft(2, '0')} ${months[parsed.month]}';
+}
+
 Widget _payslipError(WidgetRef ref) {
   return Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
-      Text('Recent Payslips', style: AppTypography.inter(fontWeight: FontWeight.w800)),
+      Text('Recent Payslips', style: AppTypography.inter(fontSize: 14, fontWeight: FontWeight.w700)),
       const SizedBox(height: 8),
       Row(
         children: [
@@ -2310,12 +2521,13 @@ BoxDecoration _cardDecoration() => BoxDecoration(
 String _status(Map<String, dynamic> item) =>
     field(item, const ['status'], 'PENDING').toUpperCase();
 
-bool _matchesWorkFilter(Map<String, dynamic> item, String filter) {
-  if (filter == 'All' || filter == 'Pick Date') return true;
+bool _matchesWorkFilter(Map<String, dynamic> item, String filter, {DateTime? custom}) {
+  if (filter == 'All' || filter == 'All Dates') return true;
   final date = workDate(item);
   if (date == null) return false;
   final now = DateTime.now();
   final today = DateTime(now.year, now.month, now.day);
+  if (filter == 'Pick Date') return custom != null && _sameDay(date, custom);
   if (filter == 'Today') return _sameDay(date, today);
   if (filter == 'Tomorrow') {
     return _sameDay(date, today.add(const Duration(days: 1)));

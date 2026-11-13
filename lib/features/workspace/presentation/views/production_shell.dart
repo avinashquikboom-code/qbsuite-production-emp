@@ -193,14 +193,17 @@ class _ProductionDrawer extends ConsumerWidget {
                     ),
                   ),
                   const SizedBox(width: 10),
-                  Column(
+                  Expanded(
+                    child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'QB Suite',
+                        'QB Suite Production',
+                        maxLines: 2,
                         style: AppTypography.inter(
-                          fontSize: 18,
+                          fontSize: 16,
                           fontWeight: FontWeight.w800,
+                          height: 1.15,
                         ),
                       ),
                       Text(
@@ -213,6 +216,7 @@ class _ProductionDrawer extends ConsumerWidget {
                         ),
                       ),
                     ],
+                    ),
                   ),
                 ],
               ),

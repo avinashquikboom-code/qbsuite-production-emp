@@ -107,9 +107,19 @@ class ProductionApi {
   Future<List<Map<String, dynamic>>> payslips() =>
       _list('/admin/payroll/slips');
 
-  Future<Map<String, dynamic>> salary() => _object('/admin/payroll/salary');
-
-  Future<Map<String, dynamic>> salaryTarget() => _object('/admin/payroll/targets/me');
+  Future<void> downloadPayslip(Object id) async {
+    try {
+      await _dio.get<Object>(
+        '/admin/payroll/slips/$id/pdf',
+        options: Options(responseType: ResponseType.bytes),
+      );
+    } on DioException catch (error) {
+      final data = error.response?.data;
+      final message = data is Map ? data['message'] : null;
+      final text = message is List ? message.join('\n') : message?.toString();
+      throw AppFailure(text != null && text.isNotEmpty ? text : 'Unable to download the salary slip PDF.');
+    }
+  }
 
   Future<List<Map<String, dynamic>>> leaveBalances() => _list('/leaves/balances');
 

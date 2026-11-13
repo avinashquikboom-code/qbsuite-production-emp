@@ -149,9 +149,9 @@ class QbSplashBody extends StatelessWidget {
             ),
             const SizedBox(height: 24),
             Text(
-              'QB SUITE',
+              'QB Suite Production',
               style: AppTypography.inter(
-                fontSize: 30,
+                fontSize: 26,
                 fontWeight: FontWeight.w700,
                 color: AppColors.textPrimary,
                 letterSpacing: -0.5,

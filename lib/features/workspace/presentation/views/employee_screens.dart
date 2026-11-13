@@ -9,14 +9,6 @@ import '../../../../core/utils/app_currency.dart';
 import '../../data/production_api.dart';
 import '../providers/production_providers.dart';
 
-final salaryTargetProvider = FutureProvider<Map<String, dynamic>>((ref) async {
-  try {
-    return await ref.watch(productionApiProvider).salaryTarget();
-  } catch (_) {
-    return const {};
-  }
-});
-
 class EditProfileScreen extends ConsumerStatefulWidget {
   const EditProfileScreen({super.key});
 
@@ -806,102 +798,374 @@ class _ExpensesClaimsScreenState extends ConsumerState<ExpensesClaimsScreen> {
 }
 
 
-class SalarySlipsScreen extends ConsumerWidget {
+class SalarySlipsScreen extends ConsumerStatefulWidget {
   const SalarySlipsScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<SalarySlipsScreen> createState() => _SalarySlipsScreenState();
+}
+
+class _SalarySlipsScreenState extends ConsumerState<SalarySlipsScreen> {
+  bool _employeeOpen = true;
+  bool _bankOpen = true;
+  bool _showAll = false;
+
+  @override
+  Widget build(BuildContext context) {
     final slips = ref.watch(payslipsProvider);
-    final profile = ref.watch(employeeProfileProvider).asData?.value ?? const {};
+    final profile = ref.watch(employeeProfileProvider).asData?.value ?? const <String, dynamic>{};
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
         title: Text('Salary Slips & Payroll', style: AppTypography.inter(fontWeight: FontWeight.w700, fontSize: 18)),
-        actions: [IconButton(onPressed: () => ref.invalidate(payslipsProvider), icon: const Icon(Remix.refresh_line))],
+        actions: [
+          IconButton(onPressed: () => ref.invalidate(payslipsProvider), icon: const Icon(Remix.refresh_line)),
+        ],
       ),
       body: slips.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (error, _) => _retry(error, () => ref.invalidate(payslipsProvider)),
         data: (items) {
           final latest = items.isEmpty ? null : items.first;
-          return ListView(
-            padding: const EdgeInsets.fromLTRB(16, 18, 16, 24),
-            children: [
-              if (latest != null) ...[
-                _latestCard(context, latest),
+          final history = _showAll ? items : items.take(4).toList();
+          return RefreshIndicator(
+            onRefresh: () async => ref.invalidate(payslipsProvider),
+            child: ListView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.fromLTRB(16, 18, 16, 24),
+              children: [
+                if (latest != null) ...[
+                  _latestCard(latest),
+                  const SizedBox(height: 14),
+                  _actions(latest),
+                  const SizedBox(height: 14),
+                ],
+                _employeeCard(profile, latest),
                 const SizedBox(height: 14),
+                _bankCard(profile, latest),
+                const SizedBox(height: 24),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('Payslip History', style: AppTypography.inter(fontSize: 17, fontWeight: FontWeight.w700)),
+                          const SizedBox(height: 2),
+                          Text('View and download your monthly salary slips', style: AppTypography.inter(fontSize: 12.5, color: AppColors.textSecondary)),
+                        ],
+                      ),
+                    ),
+                    if (items.length > 4)
+                      GestureDetector(
+                        onTap: () => setState(() => _showAll = !_showAll),
+                        child: Text(_showAll ? 'Show Less' : 'View All >', style: AppTypography.inter(fontSize: 12.5, fontWeight: FontWeight.w700, color: AppColors.primary)),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                if (items.isEmpty) _empty('No salary slips yet') else for (final slip in history) ...[_historyCard(slip), const SizedBox(height: 10)],
               ],
-              Builder(builder: (context) {
-                final target = ref.watch(salaryTargetProvider).asData?.value;
-                if (target == null || target.isEmpty) return const SizedBox.shrink();
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 14),
-                  child: _infoCard('Target Salary', [
-                    _line('Monthly target', AppCurrency.format(num.tryParse('${target['monthlyTarget'] ?? 0}') ?? 0)),
-                    _line('Achieved', AppCurrency.format(num.tryParse('${target['achievedAmount'] ?? 0}') ?? 0)),
-                    _line('Eligible salary', AppCurrency.format(num.tryParse('${target['eligibleSalary'] ?? 0}') ?? 0)),
-                    _line('Status', '${target['targetStatus'] ?? '—'}'),
-                  ]),
-                );
-              }),
-              _infoCard('Employee Information', [
-                _line('Name', '${profile['name'] ?? ''}'),
-                _line('Code', '${profile['employeeCode'] ?? ''}'),
-                _line('Designation', '${profile['designation'] ?? ''}'),
-                _line('Department', '${profile['department'] ?? ''}'),
-              ]),
-              const SizedBox(height: 14),
-              _infoCard('Bank & Payment', [
-                _line('Account', _mask('${_bank(profile)['accountNumber'] ?? _bank(profile)['accountNo'] ?? ''}')),
-                _line('Bank', '${_bank(profile)['bankName'] ?? _bank(profile)['bank'] ?? '—'}'),
-                _line('IFSC', '${_bank(profile)['ifsc'] ?? _bank(profile)['ifscCode'] ?? '—'}'),
-              ]),
-              const SizedBox(height: 24),
-              Text('Payslip History', style: AppTypography.inter(fontSize: 16, fontWeight: FontWeight.w700)),
-              const SizedBox(height: 12),
-              if (items.isEmpty) _empty('No salary slips yet') else for (final slip in items) _historyTile(context, slip),
-            ],
+            ),
           );
         },
       ),
     );
   }
 
-  Widget _latestCard(BuildContext context, Map<String, dynamic> slip) {
-    final net = num.tryParse('${slip['netSalary'] ?? slip['netPay'] ?? slip['amount'] ?? 0}') ?? 0;
-    return InkWell(
-      onTap: () => Navigator.push(context, MaterialPageRoute<void>(builder: (_) => PayslipScreen(slip: slip))),
+  Widget _latestCard(Map<String, dynamic> slip) {
+    final status = '${slip['status'] ?? 'GENERATED'}'.toUpperCase();
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(colors: [Color(0xFF0F763E), Color(0xFF16A34A)], begin: Alignment.topLeft, end: Alignment.bottomRight),
+        borderRadius: BorderRadius.circular(22),
+        boxShadow: [BoxShadow(color: const Color(0xFF16A34A).withValues(alpha: 0.28), blurRadius: 18, offset: const Offset(0, 8))],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('LATEST SALARY SLIP', style: AppTypography.inter(color: Colors.white.withValues(alpha: 0.8), fontSize: 10.5, fontWeight: FontWeight.w800, letterSpacing: 1.1)),
+                    const SizedBox(height: 2),
+                    Text(_month(slip), maxLines: 1, overflow: TextOverflow.ellipsis, style: AppTypography.inter(color: Colors.white, fontSize: 17, fontWeight: FontWeight.w700)),
+                  ],
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.white.withValues(alpha: 0.25)),
+                ),
+                child: Text('[$status]', style: AppTypography.inter(color: Colors.white, fontSize: 10.5, fontWeight: FontWeight.w800, letterSpacing: 0.6)),
+              ),
+            ],
+          ),
+          const SizedBox(height: 18),
+          Text('Net Payable', style: AppTypography.inter(color: Colors.white.withValues(alpha: 0.85), fontSize: 12.5, fontWeight: FontWeight.w500)),
+          const SizedBox(height: 2),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text(AppCurrency.format(_num(slip, const ['netSalary', 'netPay', 'amount'])), style: AppTypography.inter(fontSize: 34, fontWeight: FontWeight.w900, color: Colors.white, letterSpacing: -0.5)),
+          ),
+          const SizedBox(height: 4),
+          Row(
+            children: [
+              Icon(Remix.calendar_check_line, size: 13, color: Colors.white.withValues(alpha: 0.8)),
+              const SizedBox(width: 5),
+              Text('Disbursed on: ${_slipDate(slip)}', style: AppTypography.inter(fontSize: 12, fontWeight: FontWeight.w500, color: Colors.white.withValues(alpha: 0.85))),
+            ],
+          ),
+          const SizedBox(height: 18),
+          Divider(color: Colors.white.withValues(alpha: 0.22), height: 1),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              _breakBox('Basic', _num(slip, const ['basicSalary', 'basic'])),
+              const SizedBox(width: 6),
+              _breakBox('Allowances', _num(slip, const ['allowances']) + _num(slip, const ['hra', 'specialAllowance'])),
+              const SizedBox(width: 6),
+              _breakBox('Reimbursement', _num(slip, const ['reimbursement'])),
+              const SizedBox(width: 6),
+              _breakBox('Total Deductions', _num(slip, const ['totalDeductions', 'deductions'])),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _breakBox(String label, num value) {
+    return Expanded(
       child: Container(
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          gradient: const LinearGradient(colors: [Color(0xFF0F763E), Color(0xFF16A34A)], begin: Alignment.topLeft, end: Alignment.bottomRight),
-          borderRadius: BorderRadius.circular(22),
-        ),
+        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 8),
+        decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(10)),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('LATEST SALARY SLIP', style: AppTypography.inter(color: Colors.white70, fontSize: 11, fontWeight: FontWeight.w800, letterSpacing: 0.6)),
-            const SizedBox(height: 8),
-            Text('${slip['month'] ?? slip['period'] ?? 'Payslip'}', style: AppTypography.inter(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w700)),
-            const SizedBox(height: 8),
-            Text(AppCurrency.format(net), style: AppTypography.inter(color: Colors.white, fontSize: 28, fontWeight: FontWeight.w800)),
-            const SizedBox(height: 8),
-            Text('Tap to open the payslip', style: AppTypography.inter(color: Colors.white70, fontSize: 12)),
+            FittedBox(fit: BoxFit.scaleDown, child: Text(label, maxLines: 1, style: AppTypography.inter(color: Colors.white.withValues(alpha: 0.85), fontSize: 10, fontWeight: FontWeight.w600))),
+            const SizedBox(height: 3),
+            FittedBox(fit: BoxFit.scaleDown, child: Text(AppCurrency.format(value), maxLines: 1, style: AppTypography.inter(color: Colors.white, fontSize: 12.5, fontWeight: FontWeight.w800))),
           ],
         ),
       ),
     );
   }
 
-  Widget _historyTile(BuildContext context, Map<String, dynamic> slip) {
-    final net = num.tryParse('${slip['netSalary'] ?? slip['netPay'] ?? slip['amount'] ?? 0}') ?? 0;
-    return ListTile(
-      contentPadding: EdgeInsets.zero,
-      title: Text('${slip['month'] ?? slip['period'] ?? 'Payslip'}', style: AppTypography.inter(fontWeight: FontWeight.w700)),
-      subtitle: Text('${slip['status'] ?? 'GENERATED'}', style: AppTypography.inter(fontSize: 12, color: AppColors.textSecondary)),
-      trailing: Text(AppCurrency.format(net), style: AppTypography.inter(fontWeight: FontWeight.w700)),
-      onTap: () => Navigator.push(context, MaterialPageRoute<void>(builder: (_) => PayslipScreen(slip: slip))),
+  Widget _actions(Map<String, dynamic> slip) {
+    return Row(
+      children: [
+        Expanded(
+          child: SizedBox(
+            height: 48,
+            child: FilledButton.icon(
+              onPressed: () => _openSlip(slip),
+              style: FilledButton.styleFrom(backgroundColor: AppColors.primary, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))),
+              icon: const Icon(Remix.eye_line, size: 17),
+              label: Text('View Salary Slip', style: AppTypography.inter(fontSize: 13.5, fontWeight: FontWeight.w700)),
+            ),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: SizedBox(
+            height: 48,
+            child: OutlinedButton.icon(
+              onPressed: () => _download(slip),
+              style: OutlinedButton.styleFrom(foregroundColor: AppColors.primary, side: const BorderSide(color: AppColors.primary, width: 1.5), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))),
+              icon: const Icon(Remix.download_2_line, size: 17),
+              label: Text('Download PDF', style: AppTypography.inter(fontSize: 13.5, fontWeight: FontWeight.w700, color: AppColors.primary)),
+            ),
+          ),
+        ),
+      ],
     );
+  }
+
+  Widget _employeeCard(Map profile, Map<String, dynamic>? slip) {
+    String pick(List<String> keys, String fallback) {
+      for (final key in keys) {
+        final value = '${profile[key] ?? slip?[key] ?? ''}'.trim();
+        if (value.isNotEmpty && value != 'null') return value;
+      }
+      return fallback;
+    }
+
+    return _foldCard(
+      title: 'Employee Information',
+      icon: Remix.user_3_line,
+      open: _employeeOpen,
+      onTap: () => setState(() => _employeeOpen = !_employeeOpen),
+      child: Column(
+        children: [
+          _pair('EMPLOYEE NAME', pick(const ['name'], '—'), 'JOINING DATE', _prettyDate(profile['joiningDate'] ?? slip?['joiningDate'])),
+          const SizedBox(height: 12),
+          _pair('EMPLOYEE ID', pick(const ['employeeCode', 'code'], '—'), 'EMPLOYMENT TYPE', pick(const ['employmentType'], 'Full-Time')),
+          const SizedBox(height: 12),
+          _pair('DESIGNATION', pick(const ['designation'], '—'), 'LOCATION', pick(const ['branch', 'office'], 'Head Office')),
+          const SizedBox(height: 12),
+          _pair('DEPARTMENT', pick(const ['department'], '—'), 'REPORTING MANAGER', pick(const ['manager', 'reportingManager'], 'Direct Reporting')),
+        ],
+      ),
+    );
+  }
+
+  Widget _bankCard(Map profile, Map<String, dynamic>? slip) {
+    final bank = profile['bankDetails'] is Map ? Map<String, dynamic>.from(profile['bankDetails'] as Map) : slip?['bankDetails'] is Map ? Map<String, dynamic>.from(slip!['bankDetails'] as Map) : const <String, dynamic>{};
+    final account = '${bank['accountNumber'] ?? bank['accountNo'] ?? ''}'.trim();
+    return _foldCard(
+      title: 'Bank & Payment Details',
+      icon: Remix.bank_card_line,
+      open: _bankOpen,
+      onTap: () => setState(() => _bankOpen = !_bankOpen),
+      child: Column(
+        children: [
+          _pair('PAYMENT MODE', '${slip?['paymentMode'] ?? bank['paymentMode'] ?? 'Bank Transfer'}', 'BANK NAME', '${bank['bankName'] ?? bank['bank'] ?? '—'}'),
+          const SizedBox(height: 12),
+          _pair('ACCOUNT NUMBER', _mask(account), 'IFSC CODE', '${bank['ifscCode'] ?? bank['ifsc'] ?? '—'}'),
+          const SizedBox(height: 12),
+          _pair('PAYMENT REFERENCE', '${slip?['paymentReference'] ?? slip?['slipNumber'] ?? '—'}', 'DISBURSEMENT DATE', slip == null ? '—' : _slipDate(slip)),
+        ],
+      ),
+    );
+  }
+
+  Widget _foldCard({required String title, required IconData icon, required bool open, required VoidCallback onTap, required Widget child}) {
+    return Container(
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(18), border: Border.all(color: AppColors.border)),
+      child: Column(
+        children: [
+          InkWell(
+            onTap: onTap,
+            borderRadius: BorderRadius.circular(18),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(color: AppColors.lightPrimary, borderRadius: BorderRadius.circular(10)),
+                    child: Icon(icon, size: 18, color: AppColors.primary),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(child: Text(title, style: AppTypography.inter(fontSize: 14.5, fontWeight: FontWeight.w700))),
+                  Icon(open ? Remix.arrow_up_s_line : Remix.arrow_down_s_line, size: 20, color: AppColors.textSecondary),
+                ],
+              ),
+            ),
+          ),
+          if (open) ...[
+            const Divider(height: 1, color: AppColors.border),
+            Padding(padding: const EdgeInsets.all(16), child: child),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _historyCard(Map<String, dynamic> slip) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), border: Border.all(color: AppColors.border)),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(color: AppColors.lightPrimary, borderRadius: BorderRadius.circular(12)),
+            child: const Icon(Remix.file_list_3_line, color: AppColors.primary, size: 20),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(_month(slip), maxLines: 1, overflow: TextOverflow.ellipsis, style: AppTypography.inter(fontSize: 14.5, fontWeight: FontWeight.w700)),
+                const SizedBox(height: 2),
+                Text('Disbursed on ${_slipDate(slip)}', style: AppTypography.inter(fontSize: 11.5, color: AppColors.textSecondary)),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(AppCurrency.format(_num(slip, const ['netSalary', 'netPay', 'amount'])), style: AppTypography.inter(fontSize: 14.5, fontWeight: FontWeight.w700, color: AppColors.darkPrimary)),
+              const SizedBox(height: 4),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  GestureDetector(
+                    onTap: () => _openSlip(slip),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3.5),
+                      decoration: BoxDecoration(color: AppColors.lightPrimary, borderRadius: BorderRadius.circular(8)),
+                      child: Row(
+                        children: [
+                          const Icon(Remix.eye_line, size: 12, color: AppColors.primary),
+                          const SizedBox(width: 3),
+                          Text('View', style: AppTypography.inter(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.primary)),
+                        ],
+                      ),
+                    ),
+                  ),
+                  PopupMenuButton<String>(
+                    padding: EdgeInsets.zero,
+                    icon: const Icon(Remix.more_2_line, size: 16, color: AppColors.textSecondary),
+                    onSelected: (value) {
+                      if (value == 'view') _openSlip(slip);
+                      if (value == 'download') _download(slip);
+                    },
+                    itemBuilder: (context) => const [
+                      PopupMenuItem(value: 'view', child: Text('View Breakdown')),
+                      PopupMenuItem(value: 'download', child: Text('Download PDF')),
+                    ],
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _openSlip(Map<String, dynamic> slip) {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (sheet) => DraggableScrollableSheet(
+        expand: false,
+        initialChildSize: 0.82,
+        minChildSize: 0.45,
+        maxChildSize: 0.95,
+        builder: (context, controller) => SalarySlipBreakdown(slip: slip, controller: controller),
+      ),
+    );
+  }
+
+  Future<void> _download(Map<String, dynamic> slip) async {
+    final id = slip['id'];
+    if (id == null || '$id'.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('This salary slip has no PDF yet.')));
+      return;
+    }
+    try {
+      await ref.read(productionApiProvider).downloadPayslip(id);
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Salary slip PDF downloaded.')));
+    } catch (error) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$error')));
+    }
   }
 }
 
@@ -911,48 +1175,186 @@ class PayslipScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final earnings = _rows(slip['earnings'] ?? slip['allowances']);
-    final deductions = _rows(slip['deductions']);
-    final gross = num.tryParse('${slip['grossSalary'] ?? slip['grossPay'] ?? 0}') ?? 0;
-    final net = num.tryParse('${slip['netSalary'] ?? slip['netPay'] ?? slip['amount'] ?? 0}') ?? 0;
     return Scaffold(
-      backgroundColor: AppColors.background,
-      appBar: AppBar(title: Text('Payslip', style: AppTypography.inter(fontWeight: FontWeight.w700, fontSize: 18))),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          Container(
-            padding: const EdgeInsets.all(18),
-            decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), border: Border.all(color: AppColors.border)),
+      backgroundColor: Colors.white,
+      appBar: AppBar(title: Text('Salary Slip Breakdown', style: AppTypography.inter(fontWeight: FontWeight.w700, fontSize: 18))),
+      body: SalarySlipBreakdown(slip: slip),
+    );
+  }
+}
+
+class SalarySlipBreakdown extends StatelessWidget {
+  const SalarySlipBreakdown({super.key, required this.slip, this.controller});
+  final Map<String, dynamic> slip;
+  final ScrollController? controller;
+
+  @override
+  Widget build(BuildContext context) {
+    final earnings = <(String, num)>[
+      ('Basic Salary', _num(slip, const ['basicSalary', 'basic'])),
+      ('HRA Allowance', _num(slip, const ['hra'])),
+      ('Allowances & Special', _num(slip, const ['allowances']) + _num(slip, const ['specialAllowance'])),
+    ];
+    final extra = _num(slip, const ['extraWorkingPay', 'overtime']);
+    final reimbursement = _num(slip, const ['reimbursement']);
+    if (extra > 0) earnings.add(('Extra Working Pay', extra));
+    if (reimbursement > 0) earnings.add(('Expense Reimbursement', reimbursement));
+    final deductions = <(String, num)>[
+      ('Provident Fund (PF)', _num(slip, const ['pf'])),
+      ('ESI Contribution', _num(slip, const ['esi'])),
+      ('TDS / Income Tax', _num(slip, const ['tds']) + _num(slip, const ['professionalTax'])),
+    ];
+    final loan = _num(slip, const ['loanDeduction']);
+    final lop = _num(slip, const ['unpaidLeaveDeduction', 'lop']);
+    if (loan > 0) deductions.add(('Loan Deduction (EMI)', loan));
+    if (lop > 0) deductions.add(('Loss of Pay (Unpaid Leave)', lop));
+    final rows = earnings.length > deductions.length ? earnings.length : deductions.length;
+    final earnTotal = earnings.fold<num>(0, (sum, row) => sum + row.$2);
+    final deductTotal = _num(slip, const ['totalDeductions', 'deductions']);
+    final net = _num(slip, const ['netSalary', 'netPay', 'amount']);
+    return ListView(
+      controller: controller,
+      padding: const EdgeInsets.fromLTRB(20, 18, 20, 24),
+      children: [
+        Center(child: Container(width: 40, height: 4, margin: const EdgeInsets.only(bottom: 16), decoration: BoxDecoration(color: const Color(0xFFE5E7EB), borderRadius: BorderRadius.circular(2)))),
+        Text('Salary Slip Breakdown', style: AppTypography.inter(fontSize: 19, fontWeight: FontWeight.w700)),
+        const SizedBox(height: 2),
+        Text('Pay Period: ${_month(slip)}', style: AppTypography.inter(fontSize: 13, fontWeight: FontWeight.w600, color: const Color(0xFF0F763E))),
+        const SizedBox(height: 16),
+        Text('SALARY BREAKDOWN', style: AppTypography.inter(fontSize: 12, fontWeight: FontWeight.w800, letterSpacing: 0.5)),
+        const SizedBox(height: 8),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          decoration: BoxDecoration(color: const Color(0xFFF8FAFC), borderRadius: BorderRadius.circular(10), border: Border.all(color: const Color(0xFFE2E8F0))),
+          child: Row(
+            children: [
+              Expanded(child: _amountLabel('MONTHLY SALARY', _num(slip, const ['grossSalary', 'monthlySalary']))),
+              _amountLabel('NET PAYABLE', net, alignEnd: true, valueColor: const Color(0xFF0F763E)),
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Container(
+            constraints: const BoxConstraints(minWidth: 520),
+            decoration: BoxDecoration(border: Border.all(color: const Color(0xFFE2E8F0)), borderRadius: BorderRadius.circular(10)),
+            clipBehavior: Clip.antiAlias,
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('QB SUITE', style: AppTypography.inter(fontWeight: FontWeight.w800, letterSpacing: 1)),
-                Text('${slip['month'] ?? slip['period'] ?? ''}', style: AppTypography.inter(color: AppColors.textSecondary)),
-                const Divider(height: 24),
-                Text('Earnings', style: AppTypography.inter(fontWeight: FontWeight.w700)),
-                if (earnings.isEmpty) _line('Gross', AppCurrency.format(gross)) else for (final row in earnings) _line(row.$1, AppCurrency.format(row.$2)),
-                const SizedBox(height: 12),
-                Text('Deductions', style: AppTypography.inter(fontWeight: FontWeight.w700)),
-                if (deductions.isEmpty) _line('Deductions', AppCurrency.format(gross - net)) else for (final row in deductions) _line(row.$1, AppCurrency.format(row.$2)),
-                const Divider(height: 24),
-                _line('Net Pay', AppCurrency.format(net)),
+                Container(
+                  color: const Color(0xFF0F763E),
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  child: Row(children: [
+                    _head('EARNINGS', 155),
+                    _head('AMOUNT', 100, align: TextAlign.right),
+                    const SizedBox(width: 16),
+                    _head('DEDUCTIONS', 165),
+                    _head('AMOUNT', 100, align: TextAlign.right),
+                  ]),
+                ),
+                for (var index = 0; index < rows; index++)
+                  Container(
+                    color: index.isOdd ? const Color(0xFFF8FAFC) : Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9.5),
+                    child: Row(children: [
+                      _cell(index < earnings.length ? earnings[index].$1 : '—', 155, muted: index >= earnings.length),
+                      _cell(index < earnings.length ? AppCurrency.format(earnings[index].$2) : '—', 100, align: TextAlign.right, muted: index >= earnings.length),
+                      const SizedBox(width: 16),
+                      _cell(index < deductions.length ? deductions[index].$1 : '—', 165, muted: index >= deductions.length),
+                      _cell(index < deductions.length ? AppCurrency.format(deductions[index].$2) : '—', 100, align: TextAlign.right, color: const Color(0xFFDC2626), muted: index >= deductions.length),
+                    ]),
+                  ),
+                Container(
+                  color: const Color(0xFFF1F5F9),
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+                  child: Row(children: [
+                    _cell('Total Earnings', 155, bold: true),
+                    _cell(AppCurrency.format(earnTotal), 100, align: TextAlign.right, bold: true),
+                    const SizedBox(width: 16),
+                    _cell('Total Deductions', 165, bold: true),
+                    _cell(AppCurrency.format(deductTotal), 100, align: TextAlign.right, bold: true, color: const Color(0xFFDC2626)),
+                  ]),
+                ),
               ],
             ),
           ),
-        ],
-      ),
+        ),
+        const SizedBox(height: 18),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(color: const Color(0xFFE8F9EE), borderRadius: BorderRadius.circular(12), border: Border.all(color: const Color(0xFF86EFAC), width: 1.2)),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('NET PAYABLE (TAKE HOME SALARY)', style: AppTypography.inter(fontSize: 11, fontWeight: FontWeight.w700, letterSpacing: 0.5, color: const Color(0xFF0F763E))),
+              const SizedBox(height: 4),
+              Text(AppCurrency.format(net), style: AppTypography.inter(fontSize: 24, fontWeight: FontWeight.w800, color: const Color(0xFF0F763E))),
+            ],
+          ),
+        ),
+      ],
     );
   }
 
-  List<(String, num)> _rows(Object? raw) {
-    if (raw is! List) return const [];
-    return raw.whereType<Map>().map((item) {
-      final label = '${item['name'] ?? item['label'] ?? item['component'] ?? 'Item'}';
-      final amount = num.tryParse('${item['amount'] ?? item['value'] ?? 0}') ?? 0;
-      return (label, amount);
-    }).toList();
+  Widget _amountLabel(String label, num value, {bool alignEnd = false, Color? valueColor}) {
+    return Column(
+      crossAxisAlignment: alignEnd ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+      children: [
+        Text(label, style: AppTypography.inter(fontSize: 10, fontWeight: FontWeight.w700, color: const Color(0xFF64748B), letterSpacing: 0.5)),
+        const SizedBox(height: 2),
+        Text(AppCurrency.format(value), style: AppTypography.inter(fontSize: 13, fontWeight: FontWeight.w800, color: valueColor ?? AppColors.textPrimary)),
+      ],
+    );
   }
+
+  Widget _head(String text, double width, {TextAlign align = TextAlign.left}) {
+    return SizedBox(width: width, child: Text(text, textAlign: align, style: AppTypography.inter(fontSize: 11.5, fontWeight: FontWeight.w700, color: Colors.white, letterSpacing: 0.5)));
+  }
+
+  Widget _cell(String text, double width, {TextAlign align = TextAlign.left, bool bold = false, bool muted = false, Color? color}) {
+    return SizedBox(
+      width: width,
+      child: Text(text, textAlign: align, style: AppTypography.inter(fontSize: 12.5, fontWeight: bold ? FontWeight.w700 : FontWeight.w600, color: muted ? const Color(0xFF94A3B8) : color ?? AppColors.textPrimary)),
+    );
+  }
+}
+
+Widget _pair(String leftLabel, String leftValue, String rightLabel, String rightValue) {
+  Widget side(String label, String value) => Expanded(
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: AppTypography.inter(fontSize: 10, fontWeight: FontWeight.w700, color: AppColors.textSecondary, letterSpacing: 0.6)),
+        const SizedBox(height: 2),
+        Text(value.isEmpty ? '—' : value, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppTypography.inter(fontSize: 13, fontWeight: FontWeight.w700)),
+      ],
+    ),
+  );
+  return Row(crossAxisAlignment: CrossAxisAlignment.start, children: [side(leftLabel, leftValue), const SizedBox(width: 12), side(rightLabel, rightValue)]);
+}
+
+num _num(Map slip, List<String> keys) {
+  for (final key in keys) {
+    final value = num.tryParse('${slip[key]}');
+    if (value != null) return value;
+  }
+  return 0;
+}
+
+String _month(Map slip) {
+  final text = '${slip['payPeriod'] ?? slip['month'] ?? slip['period'] ?? ''}'.trim();
+  return text.isEmpty || text == 'null' ? 'Payslip' : text;
+}
+
+String _slipDate(Map slip) => _prettyDate(slip['generatedAt'] ?? slip['date'] ?? slip['paidOn'] ?? slip['disbursedOn']);
+
+String _prettyDate(Object? raw) {
+  final parsed = DateTime.tryParse('$raw');
+  if (parsed == null) return '—';
+  const months = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  return '${parsed.day} ${months[parsed.month]} ${parsed.year}';
 }
 
 class AccountSettingsScreen extends StatelessWidget {
@@ -1014,28 +1416,6 @@ class AccountSettingsScreen extends StatelessWidget {
     );
   }
 }
-
-Widget _line(String label, String value) => Padding(
-  padding: const EdgeInsets.symmetric(vertical: 4),
-  child: Row(
-    children: [
-      Expanded(child: Text(label, style: AppTypography.inter(fontSize: 13, color: AppColors.textSecondary))),
-      Text(value.isEmpty ? '—' : value, style: AppTypography.inter(fontSize: 13, fontWeight: FontWeight.w700)),
-    ],
-  ),
-);
-
-Widget _infoCard(String title, List<Widget> lines) => Container(
-  padding: const EdgeInsets.all(16),
-  decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), border: Border.all(color: AppColors.border)),
-  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-    Text(title, style: AppTypography.inter(fontWeight: FontWeight.w700)),
-    const SizedBox(height: 8),
-    ...lines,
-  ]),
-);
-
-Map _bank(Map profile) => profile['bankDetails'] is Map ? profile['bankDetails'] as Map : const {};
 
 String _mask(String raw) {
   final clean = raw.trim();
