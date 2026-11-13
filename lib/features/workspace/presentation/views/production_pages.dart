@@ -487,8 +487,19 @@ class _AttendanceCard extends ConsumerWidget {
                   borderRadius: BorderRadius.circular(16),
                 ),
               ),
-              onPressed: () {
-                ref.read(uiPunchedInProvider.notifier).toggle();
+              onPressed: () async {
+                try {
+                  if (punchedIn) {
+                    await ref.read(productionApiProvider).punchOut();
+                  } else {
+                    await ref.read(productionApiProvider).punchIn();
+                  }
+                  ref.invalidate(attendanceProvider);
+                } catch (error) {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$error')));
+                  }
+                }
               },
               icon: const Icon(Remix.fingerprint_line),
               label: Text(punchedIn ? 'PUNCH OUT' : 'PUNCH IN'),
@@ -1450,9 +1461,9 @@ class ProductionProfilePage extends ConsumerWidget {
         onRetry: () => ref.invalidate(employeeProfileProvider),
       ),
       data: (data) {
-        final name = field(data, const ['name', 'fullName'], 'Sumit Parmar');
-        final designation = field(data, const ['designation'], 'Senior Photographer');
-        final code = field(data, const ['employeeCode', 'code'], 'EMP-011');
+        final name = field(data, const ['name', 'fullName'], 'Employee');
+        final designation = field(data, const ['designation'], '');
+        final code = field(data, const ['employeeCode', 'code'], '');
         return ListView(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
           children: [
@@ -1525,7 +1536,7 @@ class ProductionProfilePage extends ConsumerWidget {
                   ),
                   const SizedBox(height: 16),
                   _profileRow(Remix.briefcase_line, 'Designation:', designation.toUpperCase()),
-                  _profileRow(Remix.building_line, 'Department:', field(data, const ['department'], 'PRODUCTION').toUpperCase()),
+                  _profileRow(Remix.building_line, 'Department:', field(data, const ['department'], '—').toUpperCase()),
                   _profileRow(Remix.id_card_line, 'Employee Code:', code),
                   _profileRow(Remix.map_pin_line, 'Assigned Branch:', field(data, const ['branch'], '')),
                   _profileRow(Remix.mail_line, 'Email:', field(data, const ['email'], '')),
@@ -1552,7 +1563,10 @@ class ProductionProfilePage extends ConsumerWidget {
                 loading: () => const LinearProgressIndicator(),
                 error: (error, _) => _payslipError(ref),
                 data: (items) => items.isEmpty
-                    ? _payslipError(ref)
+                    ? Text(
+                        'No payslips yet',
+                        style: AppTypography.inter(color: AppColors.textSecondary),
+                      )
                     : Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -1911,7 +1925,7 @@ Widget _profileRow(IconData icon, String label, String value) {
 String _profileInitials(String name) {
   final parts = name.trim().split(RegExp(r'\s+')).where((part) => part.isNotEmpty);
   final letters = parts.map((part) => part[0]).take(2).join();
-  return letters.isEmpty ? 'SP' : letters.toUpperCase();
+  return letters.isEmpty ? 'E' : letters.toUpperCase();
 }
 
 Widget _payslipError(WidgetRef ref) {

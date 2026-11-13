@@ -7,7 +7,10 @@ abstract final class Environment {
     'APP_ENV',
     defaultValue: 'development',
   );
-  static const apiBaseUrl = String.fromEnvironment('API_BASE_URL');
+  static const apiBaseUrl = String.fromEnvironment(
+    'API_BASE_URL',
+    defaultValue: 'https://api.qbapp.online/api/v1',
+  );
   static AppEnvironment get current => AppEnvironment.values.byName(name);
   static void validate({bool requireUrl = false, String? baseUrl}) {
     final env = current;

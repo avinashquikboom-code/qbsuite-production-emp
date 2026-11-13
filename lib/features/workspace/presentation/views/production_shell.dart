@@ -218,7 +218,7 @@ class _ProductionDrawer extends ConsumerWidget {
                       radius: 18,
                       backgroundColor: AppColors.primary,
                       child: Text(
-                        _initials(_text(profile, const ['name'], 'SP')),
+                        _initials(_text(profile, const ['name'], 'E')),
                         style: AppTypography.inter(
                           color: Colors.white,
                           fontWeight: FontWeight.w800,
@@ -243,7 +243,7 @@ class _ProductionDrawer extends ConsumerWidget {
                             ),
                           ),
                           Text(
-                            '${_text(profile, const ['employeeCode', 'code'], 'EMP-011')} • ${_text(profile, const ['designation'], 'Production')}',
+                            '${_text(profile, const ['employeeCode', 'code'], '—')} • ${_text(profile, const ['designation'], 'Employee')}',
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: AppTypography.inter(

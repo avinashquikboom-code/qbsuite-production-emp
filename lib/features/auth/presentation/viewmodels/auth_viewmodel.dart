@@ -24,11 +24,7 @@ class AuthViewModel extends AsyncNotifier<Session?> {
   Future<void> signIn(String email, String password) async {
     if (_busy || state.isLoading) return;
     final identifier = email.trim();
-    final isEmail = RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$').hasMatch(identifier);
-    final isEmployeeId = RegExp(
-      r'^[A-Za-z0-9][A-Za-z0-9._-]{2,}$',
-    ).hasMatch(identifier);
-    if ((!isEmail && !isEmployeeId) || password.isEmpty) {
+    if (!_acceptsLoginIdentifier(identifier) || password.isEmpty) {
       state = AsyncError(
         const AppFailure('Enter your employee ID, email, or mobile and password.'),
         StackTrace.current,
@@ -42,6 +38,16 @@ class AuthViewModel extends AsyncNotifier<Session?> {
     );
     if (ref.mounted) state = result;
     _busy = false;
+  }
+
+  bool _acceptsLoginIdentifier(String value) {
+    if (RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$').hasMatch(value)) return true;
+    final digits = value.replaceAll(RegExp(r'\D'), '');
+    if (!RegExp(r'[A-Za-z]').hasMatch(value) && digits.length >= 10 && digits.length <= 15) {
+      return true;
+    }
+    final code = value.replaceAll(RegExp(r'\s+'), '');
+    return RegExp(r'^[A-Za-z0-9][A-Za-z0-9._-]{1,}$').hasMatch(code);
   }
 
   Future<void> signOut() async {

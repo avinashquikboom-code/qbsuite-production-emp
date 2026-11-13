@@ -112,12 +112,42 @@ class AppSplashScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) => const Scaffold(
     backgroundColor: Colors.white,
-    body: SafeArea(
-      child: Center(
+    body: QbSplashBody(),
+  );
+}
+
+class QbSplashBody extends StatelessWidget {
+  const QbSplashBody({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Text(
+            Container(
+              width: 100,
+              height: 100,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(28),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.1),
+                    blurRadius: 20,
+                    offset: const Offset(0, 10),
+                  ),
+                ],
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(28),
+                child: Image.asset('assets/images/app_logo.png', fit: BoxFit.contain),
+              ),
+            ),
+            const SizedBox(height: 24),
+            const Text(
               'QB SUITE',
               style: TextStyle(
                 fontSize: 30,
@@ -126,8 +156,8 @@ class AppSplashScreen extends StatelessWidget {
                 letterSpacing: -0.5,
               ),
             ),
-            SizedBox(height: 8),
-            Text(
+            const SizedBox(height: 8),
+            const Text(
               'Your Business Suite',
               style: TextStyle(
                 fontSize: 14,
@@ -139,8 +169,8 @@ class AppSplashScreen extends StatelessWidget {
           ],
         ),
       ),
-    ),
-  );
+    );
+  }
 }
 
 class AppErrorWidget extends StatelessWidget {

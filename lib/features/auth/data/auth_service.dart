@@ -11,7 +11,7 @@ class AuthService {
     try {
       final response = await _dio.post<Object?>(
         AppConfig.loginEndpoint,
-        data: {'email': email.trim(), 'password': password},
+        data: {'email': loginIdentifier(email), 'password': password},
         options: Options(extra: {'public': true}),
       );
       final body = response.data;
@@ -35,12 +35,37 @@ class AuthService {
         role: role!,
       );
     } on DioException catch (error) {
+      final message = _serverMessage(error);
       if (error.response?.statusCode == 401) {
-        throw const AppFailure('Email or password is incorrect.');
+        throw AppFailure(
+          message ?? 'Employee ID, email, mobile, or password is incorrect.',
+        );
       }
+      if (message != null) throw AppFailure(message);
       throw error.error is AppFailure
           ? error.error!
           : AppFailure.fromDio(error);
     }
   }
+}
+
+/// The employee login API accepts an email, employee code, or mobile number
+/// in the same `email` field.
+String loginIdentifier(String raw) {
+  final value = raw.trim();
+  if (value.contains('@')) return value.toLowerCase();
+  final digits = value.replaceAll(RegExp(r'\D'), '');
+  if (!RegExp(r'[A-Za-z]').hasMatch(value) && digits.length >= 10) {
+    return digits.substring(digits.length - 10);
+  }
+  return value.replaceAll(RegExp(r'\s+'), '');
+}
+
+String? _serverMessage(DioException error) {
+  final data = error.response?.data;
+  if (data is! Map) return null;
+  final message = data['message'];
+  final text = message is List ? message.join('\n') : message?.toString();
+  if (text == null || text.trim().isEmpty) return null;
+  return text.trim();
 }

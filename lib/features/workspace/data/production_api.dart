@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:geolocator/geolocator.dart';
 
 import '../../../core/errors/app_failure.dart';
 import '../../../core/network/dio_client.dart';
@@ -20,18 +21,21 @@ class ProductionApi {
     int? month,
     int? year,
   }) {
+    final now = DateTime.now();
+    final selectedMonth = month ?? now.month;
+    final selectedYear = year ?? now.year;
+    final start = DateTime(selectedYear, selectedMonth, 1);
+    final end = DateTime(selectedYear, selectedMonth + 1, 0);
+    String day(DateTime value) => value.toIso8601String().split('T').first;
     return _list(
       '/attendance/history',
-      query: {
-        'month': ?month,
-        'year': ?year,
-      },
-    );
+      query: {'dateFrom': day(start), 'dateTo': day(end), 'limit': 50},
+    ).then((rows) => rows.map(_historyRow).toList());
   }
 
-  Future<void> punchIn() => _send('/attendance/check-in');
+  Future<void> punchIn() => _punch('/attendance/check-in');
 
-  Future<void> punchOut() => _send('/attendance/check-out');
+  Future<void> punchOut() => _punch('/attendance/check-out');
 
   Future<List<Map<String, dynamic>>> myOvertime() => _list('/overtime', query: {'limit': 20});
 
@@ -112,12 +116,63 @@ class ProductionApi {
     }
   }
 
+  Future<void> _punch(String path) async {
+    final position = await _position();
+    try {
+      await _dio.post<Object>(path, data: {
+        'latitude': position.latitude,
+        'longitude': position.longitude,
+        'accuracy': position.accuracy,
+      });
+    } on DioException catch (error) {
+      throw error.error is AppFailure ? error.error! : AppFailure.fromDio(error);
+    }
+  }
+
+  Future<Position> _position() async {
+    final enabled = await Geolocator.isLocationServiceEnabled();
+    if (!enabled) throw const AppFailure('Turn on location to record attendance.');
+    var permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+    }
+    if (permission == LocationPermission.denied || permission == LocationPermission.deniedForever) {
+      throw const AppFailure('Location permission is required to record attendance.');
+    }
+    return Geolocator.getCurrentPosition();
+  }
+
   Future<void> _send(String path) async {
     try {
       await _dio.post<Object>(path, data: const <String, dynamic>{});
     } on DioException catch (error) {
       throw error.error is AppFailure ? error.error! : AppFailure.fromDio(error);
     }
+  }
+
+  Map<String, dynamic> _historyRow(Map<String, dynamic> row) {
+    String clock(Object? value) {
+      final parsed = DateTime.tryParse('$value')?.toLocal();
+      if (parsed == null) return value == null ? '--' : '$value';
+      final hour = parsed.hour % 12 == 0 ? 12 : parsed.hour % 12;
+      final minute = parsed.minute.toString().padLeft(2, '0');
+      return '$hour:$minute ${parsed.hour >= 12 ? 'PM' : 'AM'}';
+    }
+    final office = row['office'];
+    final branch = office is Map
+        ? '${office['name'] ?? ''} ${office['city'] ?? ''}'.trim()
+        : '${row['branch'] ?? row['locationIn'] ?? ''}';
+    final date = DateTime.tryParse('${row['date']}')?.toLocal();
+    const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+    return {
+      ...row,
+      'checkIn': row['checkIn'] ?? clock(row['punchIn']),
+      'checkOut': row['checkOut'] ?? clock(row['punchOut']),
+      'workHours': row['workHours'] ?? row['workingDuration'] ?? row['workingHours'],
+      'branch': branch,
+      'day': row['day'] ?? (date == null ? '' : days[date.weekday - 1]),
+      'breakDuration': row['breakDuration'] ?? row['totalBreakDuration'],
+    };
   }
 
   Map<String, dynamic> _asMap(Object? raw) {

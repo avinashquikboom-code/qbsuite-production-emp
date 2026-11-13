@@ -207,6 +207,9 @@ void main() {
         'password': 'secret',
       });
       expect(result.accessToken, 'token');
+      expect(loginIdentifier(' EMP - 011 '), 'EMP-011');
+      expect(loginIdentifier('Employee@Company.com'), 'employee@company.com');
+      expect(loginIdentifier('+91 98765 43210'), '9876543210');
     },
   );
 
