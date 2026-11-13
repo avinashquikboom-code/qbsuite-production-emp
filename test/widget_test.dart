@@ -9,10 +9,12 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:qb_production/app/app.dart';
 import 'package:qb_production/core/config/app_config.dart';
+import 'package:qb_production/core/errors/app_failure.dart';
 import 'package:qb_production/core/network/dio_client.dart';
 import 'package:qb_production/core/storage/session_store.dart';
 import 'package:qb_production/core/utils/paginated_viewmodel.dart';
 import 'package:qb_production/features/auth/data/auth_service.dart';
+import 'package:qb_production/features/auth/domain/production_access.dart';
 import 'package:qb_production/features/auth/domain/auth_repository.dart';
 import 'package:qb_production/features/auth/domain/session.dart';
 import 'package:qb_production/features/auth/presentation/providers/auth_providers.dart';
@@ -194,6 +196,10 @@ void main() {
           'user': {
             'email': 'test@example.com',
             'role': AppConfig.allowedRoles.first,
+            'employee': {
+              'department': 'Production',
+              'designation': 'Photographer',
+            },
           },
         },
       });
@@ -212,6 +218,36 @@ void main() {
       expect(loginIdentifier('+91 98765 43210'), '9876543210');
     },
   );
+
+  test('only a production team account can sign in', () async {
+    final dio = Dio()
+      ..httpClientAdapter = StubAdapter({
+        'accessToken': 'token',
+        'user': {
+          'role': 'EMPLOYEE',
+          'crmCategory': 'BPO',
+          'employee': {'department': 'BPO', 'designation': 'Telecaller'},
+        },
+      });
+    addTearDown(() => dio.close(force: true));
+    await expectLater(
+      AuthService(dio).signIn('bpo@example.com', 'secret'),
+      throwsA(
+        isA<AppFailure>().having(
+          (error) => error.message,
+          'message',
+          productionAccessMessage,
+        ),
+      ),
+    );
+    expect(
+      isProductionTeamAccount({
+        'role': 'EMPLOYEE',
+        'employee': {'department': 'Production', 'designation': 'Video Editor'},
+      }),
+      isTrue,
+    );
+  });
 
   test('auth service rejects invalid tokens and unauthorized roles', () async {
     final dio = Dio()

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../icons/remix_icon.dart';
 import '../theme/app_colors.dart';
+import '../theme/app_typography.dart';
 import 'responsive/responsive.dart';
 
 class AppButton extends StatelessWidget {
@@ -147,9 +148,9 @@ class QbSplashBody extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 24),
-            const Text(
+            Text(
               'QB SUITE',
-              style: TextStyle(
+              style: AppTypography.inter(
                 fontSize: 30,
                 fontWeight: FontWeight.w700,
                 color: AppColors.textPrimary,
@@ -157,9 +158,9 @@ class QbSplashBody extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 8),
-            const Text(
+            Text(
               'Your Business Suite',
-              style: TextStyle(
+              style: AppTypography.inter(
                 fontSize: 14,
                 fontWeight: FontWeight.w500,
                 letterSpacing: 2,

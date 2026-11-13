@@ -22,7 +22,7 @@ class AuthViewModel extends AsyncNotifier<Session?> {
   }
 
   Future<void> signIn(String email, String password) async {
-    if (_busy || state.isLoading) return;
+    if (_busy) return;
     final identifier = email.trim();
     if (!_acceptsLoginIdentifier(identifier) || password.isEmpty) {
       state = AsyncError(

@@ -12,6 +12,7 @@ import '../../../../core/utils/app_currency.dart';
 import '../../../auth/presentation/viewmodels/auth_viewmodel.dart';
 import '../../data/production_api.dart';
 import '../providers/production_providers.dart';
+import 'employee_screens.dart';
 import 'request_overtime_sheet.dart';
 
 bool _otWindowOpen(Map<String, dynamic> row) {
@@ -171,10 +172,12 @@ class ProductionHomePage extends ConsumerWidget {
         Row(
           children: [
             Container(
-              width: 34,
-              height: 34,
+              width: 32,
+              height: 32,
               decoration: BoxDecoration(
-                color: AppColors.primary,
+                gradient: const LinearGradient(
+                  colors: [AppColors.primary, AppColors.darkPrimary],
+                ),
                 borderRadius: BorderRadius.circular(10),
               ),
               child: const Icon(
@@ -225,18 +228,18 @@ class ProductionHomePage extends ConsumerWidget {
                   Text(
                     greeting,
                     style: AppTypography.inter(
-                      fontSize: 15,
+                      fontSize: 12.5,
                       fontWeight: FontWeight.w500,
                       color: AppColors.textSecondary,
                     ),
                   ),
                   Text(
                     name,
-                    maxLines: 2,
+                    maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: AppTypography.inter(
-                      fontSize: 22,
-                      fontWeight: FontWeight.w800,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
                       height: 1.15,
                     ),
                   ),
@@ -245,10 +248,10 @@ class ProductionHomePage extends ConsumerWidget {
             ),
             if (code.isNotEmpty)
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
                   color: AppColors.lightPrimary,
-                  borderRadius: BorderRadius.circular(20),
+                  borderRadius: BorderRadius.circular(6),
                 ),
                 child: Text(
                   code,
@@ -341,233 +344,415 @@ class ProductionHomePage extends ConsumerWidget {
   }
 }
 
-class _AttendanceCard extends ConsumerWidget {
+class _AttendanceCard extends ConsumerStatefulWidget {
   const _AttendanceCard({required this.status});
   final Map<String, dynamic> status;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final details = status['status'] is Map
-        ? Map<String, dynamic>.from(status['status'] as Map)
-        : status;
-    final office = status['assignedOffice'] ?? status['office'];
-    final officeName = office is Map
-        ? '${office['name'] ?? ''} ${office['city'] ?? ''}'.trim()
-        : '';
-    final punchedIn = details['isPunchedIn'] == true ||
-        _displayTime(details['punchInTime']) != '--:--';
-    final checkedOut = _displayTime(details['punchOutTime']) != '--:--';
-    final statusLabel = checkedOut
-        ? 'Completed'
-        : punchedIn
-        ? 'Working'
-        : 'Not Checked In';
+  ConsumerState<_AttendanceCard> createState() => _AttendanceCardState();
+}
+
+class _AttendanceCardState extends ConsumerState<_AttendanceCard> {
+  bool _busy = false;
+  bool _locating = false;
+  double? _distanceMeters;
+
+  Map get _office {
+    final office = widget.status['assignedOffice'] ?? widget.status['office'];
+    return office is Map ? office : const {};
+  }
+
+  Map<String, dynamic> get _details {
+    final status = widget.status['status'];
+    return status is Map ? Map<String, dynamic>.from(status) : widget.status;
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _refreshGps());
+  }
+
+  Future<void> _refreshGps() async {
+    if (_locating || _office.isEmpty) return;
+    setState(() => _locating = true);
+    try {
+      final meters = await ref.read(productionApiProvider).distanceToOffice(_office);
+      if (mounted) setState(() => _distanceMeters = meters);
+    } catch (_) {
+      if (mounted) setState(() => _distanceMeters = null);
+    } finally {
+      if (mounted) setState(() => _locating = false);
+    }
+  }
+
+  Future<void> _run(Future<void> Function() action) async {
+    setState(() => _busy = true);
+    try {
+      await action();
+      ref.invalidate(attendanceProvider);
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$error')));
+      }
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _confirmPunchOut() async {
+    final confirmed = await showModalBottomSheet<bool>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (sheet) => SafeArea(
+        top: false,
+        child: Container(
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: const BoxDecoration(color: Color(0xFFFEE2E2), shape: BoxShape.circle),
+                    child: const Icon(Remix.logout_box_r_line, color: Color(0xFFEF4444), size: 24),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Confirm Punch Out', style: AppTypography.inter(fontSize: 18, fontWeight: FontWeight.w700)),
+                        Text('Finalize your attendance for today', style: AppTypography.inter(fontSize: 12, color: AppColors.textSecondary)),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 18),
+              Text(
+                'Are you sure you want to punch out? This will finalize your shift and record your check-out timestamp.',
+                style: AppTypography.inter(fontSize: 14, color: AppColors.textSecondary, height: 1.4),
+              ),
+              const SizedBox(height: 24),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => Navigator.pop(sheet, false),
+                      child: const Text('Cancel'),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: FilledButton(
+                      style: FilledButton.styleFrom(backgroundColor: const Color(0xFFEF4444)),
+                      onPressed: () => Navigator.pop(sheet, true),
+                      child: const Text('Yes, Punch Out'),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    if (confirmed == true) await _run(() => ref.read(productionApiProvider).punchOut());
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final details = _details;
+    final punchedIn = details['isPunchedIn'] == true || _clock(details['punchInTime']) != '--:--';
+    final checkedOut = _clock(details['punchOutTime']) != '--:--';
+    final onBreak = details['isOnBreak'] == true;
+    final remote = widget.status['isRemoteWorkActive'] == true || widget.status['workMode'] == 'REMOTE';
+    final working = punchedIn && !onBreak && !checkedOut;
+    final officeName = '${_office['name'] ?? 'Head Office'}'.trim();
+    final radius = num.tryParse('${_office['radiusMeters']}')?.toDouble();
+    final inside = _distanceMeters != null && radius != null && _distanceMeters! <= radius;
+    final badge = checkedOut
+        ? (bg: const Color(0xFFE2E8F0), text: const Color(0xFF334155), dot: const Color(0xFF64748B), label: 'Completed')
+        : onBreak
+        ? (bg: const Color(0xFFFEF3C7), text: const Color(0xFF92400E), dot: const Color(0xFFF59E0B), label: 'On Break')
+        : working
+        ? (bg: const Color(0xFFDCFCE7), text: const Color(0xFF166534), dot: AppColors.primary, label: 'Working')
+        : (bg: const Color(0xFFF1F5F9), text: const Color(0xFF64748B), dot: const Color(0xFF94A3B8), label: 'Not Checked In');
+    final location = remote
+        ? 'Approved Remote Work Mode'
+        : _distanceMeters == null
+        ? '$officeName • GPS Locating...'
+        : '$officeName • ${inside ? 'Inside Office' : 'Outside Radius'} (${_distanceMeters!.round()}m)';
+
     return Container(
       padding: const EdgeInsets.all(18),
-      decoration: _softCard(),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppColors.border),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 14, offset: const Offset(0, 4)),
+        ],
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      "Today's Attendance",
-                      style: AppTypography.inter(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                    Text(
-                      DateFormat('EEEE, d MMM yyyy').format(DateTime.now()),
-                      style: AppTypography.inter(
-                        fontSize: 11,
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
+                    Text("Today's Attendance", style: AppTypography.inter(fontSize: 15, fontWeight: FontWeight.w700)),
+                    const SizedBox(height: 2),
+                    Text(DateFormat('EEEE, d MMM yyyy').format(DateTime.now()), style: AppTypography.inter(fontSize: 11, color: AppColors.textSecondary)),
                   ],
                 ),
               ),
               const SizedBox(width: 8),
-              Flexible(
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF1F5F9),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Text(
-                    statusLabel,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: AppTypography.inter(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.textSecondary,
-                    ),
-                  ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(color: badge.bg, borderRadius: BorderRadius.circular(20)),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(width: 7, height: 7, decoration: BoxDecoration(color: badge.dot, shape: BoxShape.circle)),
+                    const SizedBox(width: 5),
+                    Text(badge.label, style: AppTypography.inter(fontSize: 11, fontWeight: FontWeight.w700, color: badge.text)),
+                  ],
                 ),
               ),
             ],
           ),
           const SizedBox(height: 16),
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 14),
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
             decoration: BoxDecoration(
-              color: const Color(0xFFF8FAFC),
-              borderRadius: BorderRadius.circular(16),
+              color: const Color(0xFFF1F5F9),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: const Color(0xFFE2E8F0)),
             ),
             child: Row(
               children: [
-                _metric(
-                  Remix.checkbox_circle_line,
-                  AppColors.primary,
-                  'Check In',
-                  _displayTime(details['punchInTime']),
-                ),
-                _metric(
-                  Remix.close_circle_line,
-                  const Color(0xFFEF4444),
-                  'Check Out',
-                  _displayTime(details['punchOutTime']),
-                ),
-                _metric(
-                  Remix.time_line,
-                  const Color(0xFF38BDF8),
-                  'Working Hours',
-                  _displayDuration(details['workingHours']),
-                ),
-                _metric(
-                  Remix.cup_line,
-                  const Color(0xFFF59E0B),
-                  'Break Taken',
-                  _displayDuration(details['breakDuration']),
-                ),
+                _metric(Remix.login_circle_line, AppColors.primary, 'Check In', _clock(details['punchInTime'])),
+                _divider(),
+                _metric(Remix.logout_circle_r_line, const Color(0xFFEF4444), 'Check Out', _clock(details['punchOutTime'])),
+                _divider(),
+                _metric(Remix.time_line, const Color(0xFF3B82F6), 'Working Hours', _hours(details['workingDuration'] ?? details['workingHours']), highlight: working),
+                _divider(),
+                _metric(Remix.cup_line, const Color(0xFFF59E0B), 'Break Taken', _hours(details['totalBreakDuration'] ?? details['breakDuration']), highlight: onBreak),
               ],
             ),
           ),
-          if (officeName.isNotEmpty) ...[
-            const SizedBox(height: 10),
-            Wrap(
-              crossAxisAlignment: WrapCrossAlignment.center,
-              spacing: 6,
-              children: [
-                const Icon(
-                  Remix.map_pin_2_line,
-                  size: 16,
-                  color: AppColors.textSecondary,
-                ),
-                Text(
-                  officeName,
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              Icon(Remix.map_pin_2_line, size: 14, color: remote ? const Color(0xFF8B5CF6) : inside ? AppColors.primary : AppColors.textSecondary),
+              const SizedBox(width: 5),
+              Expanded(
+                child: Text(
+                  location,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: AppTypography.inter(
-                    fontSize: 12,
-                    color: AppColors.textSecondary,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w500,
+                    color: remote ? const Color(0xFF8B5CF6) : inside ? AppColors.darkPrimary : AppColors.textSecondary,
                   ),
                 ),
-                TextButton.icon(
-                  onPressed: () => ref.invalidate(attendanceProvider),
-                  icon: const Icon(Remix.refresh_line, size: 16),
-                  label: const Text('Refresh GPS'),
-                ),
-              ],
-            ),
-          ],
-          const SizedBox(height: 14),
-          SizedBox(
-            width: double.infinity,
-            height: 48,
-            child: FilledButton.icon(
-              style: FilledButton.styleFrom(
-                backgroundColor: AppColors.actionGreen,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
+              ),
+              InkWell(
+                onTap: _locating ? null : _refreshGps,
+                borderRadius: BorderRadius.circular(4),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(_locating ? Remix.loader_4_line : Remix.refresh_line, size: 12, color: AppColors.textSecondary),
+                      const SizedBox(width: 2),
+                      Text('Refresh GPS', style: AppTypography.inter(fontSize: 10, color: AppColors.textSecondary)),
+                    ],
+                  ),
                 ),
               ),
-              onPressed: () async {
-                try {
-                  if (punchedIn) {
-                    await ref.read(productionApiProvider).punchOut();
-                  } else {
-                    await ref.read(productionApiProvider).punchIn();
-                  }
-                  ref.invalidate(attendanceProvider);
-                } catch (error) {
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$error')));
-                  }
-                }
-              },
-              icon: const Icon(Remix.fingerprint_line),
-              label: Text(punchedIn ? 'PUNCH OUT' : 'PUNCH IN'),
-            ),
+            ],
           ),
+          const SizedBox(height: 14),
+          _actions(checkedOut: checkedOut, onBreak: onBreak, punchedIn: punchedIn),
           const SizedBox(height: 10),
           _ProductionOtActions(
             rows: ref.watch(myOvertimeProvider).asData?.value ?? const [],
             onApply: () async {
-            final rows = ref.read(myOvertimeProvider).asData?.value ?? const <Map<String, dynamic>>[];
-            final status = rows.isEmpty ? '' : (rows.first['sessionStatus'] ?? rows.first['status'] ?? '').toString().toUpperCase();
-            final id = rows.isEmpty ? 0 : int.tryParse('${rows.first['id']}') ?? 0;
-            final window = rows.isNotEmpty && _otWindowOpen(rows.first);
-            if (status == 'CANCELLATION_REQUESTED') {
-              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Your cancellation request is waiting for admin review.')));
-              return;
-            }
-            if ((status == 'IN_PROGRESS' || ((status == 'APPROVED' || status == 'CANCELLATION_REJECTED') && window)) && id > 0) {
-              try {
-                await ref.read(productionApiProvider).markOvertime(id, end: status == 'IN_PROGRESS');
-                ref.invalidate(myOvertimeProvider);
-              } catch (error) {
-                if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$error')));
+              final rows = ref.read(myOvertimeProvider).asData?.value ?? const <Map<String, dynamic>>[];
+              final status = rows.isEmpty ? '' : (rows.first['sessionStatus'] ?? rows.first['status'] ?? '').toString().toUpperCase();
+              final id = rows.isEmpty ? 0 : int.tryParse('${rows.first['id']}') ?? 0;
+              final window = rows.isNotEmpty && _otWindowOpen(rows.first);
+              if (status == 'CANCELLATION_REQUESTED') {
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Your cancellation request is waiting for admin review.')));
+                return;
               }
-              return;
-            }
-            await showRequestOvertimeSheet(context);
-            ref.invalidate(myOvertimeProvider);
-          }, onCancel: () {
-            final rows = ref.read(myOvertimeProvider).asData?.value ?? const <Map<String, dynamic>>[];
-            if (rows.isEmpty || !_canCancelOt(rows.first)) return;
-            _requestOtCancellation(context, ref, rows.first);
-          }),
+              if ((status == 'IN_PROGRESS' || ((status == 'APPROVED' || status == 'CANCELLATION_REJECTED') && window)) && id > 0) {
+                try {
+                  await ref.read(productionApiProvider).markOvertime(id, end: status == 'IN_PROGRESS');
+                  ref.invalidate(myOvertimeProvider);
+                } catch (error) {
+                  if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$error')));
+                }
+                return;
+              }
+              await showRequestOvertimeSheet(context);
+              ref.invalidate(myOvertimeProvider);
+            },
+            onCancel: () {
+              final rows = ref.read(myOvertimeProvider).asData?.value ?? const <Map<String, dynamic>>[];
+              if (rows.isEmpty || !_canCancelOt(rows.first)) return;
+              _requestOtCancellation(context, ref, rows.first);
+            },
+          ),
         ],
       ),
     );
   }
 
-  Widget _metric(IconData icon, Color color, String label, String value) =>
-      Expanded(
+  Widget _actions({required bool checkedOut, required bool onBreak, required bool punchedIn}) {
+    if (_busy) {
+      return SizedBox(
+        width: double.infinity,
+        height: 48,
+        child: FilledButton(
+          onPressed: null,
+          style: FilledButton.styleFrom(backgroundColor: AppColors.lightPrimary, disabledBackgroundColor: AppColors.lightPrimary, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))),
+          child: Text('Processing...', style: AppTypography.inter(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.darkPrimary)),
+        ),
+      );
+    }
+    if (checkedOut) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF1F5F9),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: const Color(0xFFE2E8F0)),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Remix.checkbox_circle_fill, size: 18, color: AppColors.primary),
+            const SizedBox(width: 8),
+            Text('Attendance Completed', style: AppTypography.inter(fontSize: 14, fontWeight: FontWeight.w700, color: const Color(0xFF334155))),
+          ],
+        ),
+      );
+    }
+    if (onBreak) {
+      return Row(
+        children: [
+          Expanded(child: _solid(Remix.play_circle_line, 'End Break', AppColors.primary, () => _run(() => ref.read(productionApiProvider).endBreak()))),
+          const SizedBox(width: 10),
+          Expanded(child: _solid(Remix.logout_box_r_line, 'PUNCH OUT', const Color(0xFF94A3B8), () {
+            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please end your break before punching out.')));
+          })),
+        ],
+      );
+    }
+    if (punchedIn) {
+      return Row(
+        children: [
+          Expanded(child: _outline(Remix.cup_line, 'Start Break', const Color(0xFFF59E0B), () => _run(() => ref.read(productionApiProvider).startBreak()))),
+          const SizedBox(width: 10),
+          Expanded(child: _solid(Remix.logout_box_r_line, 'PUNCH OUT', const Color(0xFFEF4444), _confirmPunchOut)),
+        ],
+      );
+    }
+    return SizedBox(
+      width: double.infinity,
+      height: 48,
+      child: FilledButton.icon(
+        onPressed: () => _run(() => ref.read(productionApiProvider).punchIn()),
+        style: FilledButton.styleFrom(backgroundColor: AppColors.primary, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))),
+        icon: const Icon(Remix.fingerprint_line, size: 20),
+        label: Text('PUNCH IN', style: AppTypography.inter(fontSize: 15, fontWeight: FontWeight.w700, letterSpacing: 0.5)),
+      ),
+    );
+  }
+
+  Widget _solid(IconData icon, String label, Color color, VoidCallback onPressed) {
+    return SizedBox(
+      height: 48,
+      child: FilledButton.icon(
+        onPressed: onPressed,
+        style: FilledButton.styleFrom(backgroundColor: color, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))),
+        icon: Icon(icon, size: 18),
+        label: Text(label, style: AppTypography.inter(fontSize: 13.5, fontWeight: FontWeight.w700, letterSpacing: 0.5)),
+      ),
+    );
+  }
+
+  Widget _outline(IconData icon, String label, Color color, VoidCallback onPressed) {
+    return SizedBox(
+      height: 48,
+      child: OutlinedButton.icon(
+        onPressed: onPressed,
+        style: OutlinedButton.styleFrom(foregroundColor: color, side: BorderSide(color: color, width: 1.5), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))),
+        icon: Icon(icon, size: 18),
+        label: Text(label, style: AppTypography.inter(fontSize: 13.5, fontWeight: FontWeight.w700, color: color)),
+      ),
+    );
+  }
+
+  Widget _divider() => Container(width: 1, height: 36, color: AppColors.border);
+
+  Widget _metric(IconData icon, Color color, String label, String value, {bool highlight = false}) {
+    return Expanded(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 2),
         child: Column(
           children: [
-            Icon(icon, size: 20, color: color),
-            const SizedBox(height: 6),
-            Text(
-              label,
-              textAlign: TextAlign.center,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: AppTypography.inter(
-                fontSize: 10,
-                color: AppColors.textSecondary,
-              ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(icon, size: 12, color: color),
+                const SizedBox(width: 3),
+                Flexible(
+                  child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppTypography.inter(fontSize: 9, fontWeight: FontWeight.w500, color: AppColors.textSecondary)),
+                ),
+              ],
             ),
             const SizedBox(height: 4),
             Text(
               value,
-              textAlign: TextAlign.center,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: AppTypography.inter(
-                fontSize: 12,
-                fontWeight: FontWeight.w700,
-              ),
+              style: AppTypography.inter(fontSize: 12, fontWeight: FontWeight.w700, color: highlight ? AppColors.primary : AppColors.textPrimary),
             ),
           ],
         ),
-      );
+      ),
+    );
+  }
+
+  String _clock(Object? value) {
+    final parsed = DateTime.tryParse('$value')?.toLocal();
+    if (parsed == null) return _displayTime(value);
+    return DateFormat('h:mm a').format(parsed);
+  }
+
+  String _hours(Object? value) {
+    if (value is num) {
+      final minutes = (value * 60).round();
+      return '${minutes ~/ 60}h ${minutes % 60}m';
+    }
+    return _displayDuration(value);
+  }
 }
 
 String _displayTime(Object? value) {
@@ -588,7 +773,7 @@ String _displayDuration(Object? value) {
 
 BoxDecoration _softCard() => BoxDecoration(
   color: Colors.white,
-  borderRadius: BorderRadius.circular(20),
+  borderRadius: BorderRadius.circular(16),
   border: Border.all(color: AppColors.border),
   boxShadow: [
     BoxShadow(
@@ -1496,7 +1681,7 @@ class ProductionProfilePage extends ConsumerWidget {
                   Text(
                     name,
                     textAlign: TextAlign.center,
-                    style: AppTypography.inter(fontSize: 22, fontWeight: FontWeight.w800),
+                    style: AppTypography.inter(fontSize: 20, fontWeight: FontWeight.w700),
                   ),
                   const SizedBox(height: 8),
                   Wrap(
@@ -1544,16 +1729,21 @@ class ProductionProfilePage extends ConsumerWidget {
               ),
             ),
             const SizedBox(height: 14),
-            _profileAction(Remix.edit_line, 'Edit Profile', () {}),
-            _profileAction(Remix.fingerprint_line, 'My Attendance Logs', () {
-              Navigator.push(
-                context,
-                MaterialPageRoute<void>(builder: (_) => const AttendanceLogPage()),
-              );
+            _profileAction(Remix.edit_line, 'Edit Profile', () {
+              Navigator.push(context, MaterialPageRoute<void>(builder: (_) => const EditProfileScreen()));
             }),
-            _profileAction(Remix.calendar_event_line, 'Leave & Remote Applications', () {}),
-            _profileAction(Remix.file_list_3_line, 'Salary Slips & Payslips', () {}),
-            _profileAction(Remix.settings_3_line, 'Account Settings', () {}),
+            _profileAction(Remix.fingerprint_line, 'My Attendance Logs', () {
+              Navigator.push(context, MaterialPageRoute<void>(builder: (_) => const AttendanceLogPage()));
+            }),
+            _profileAction(Remix.calendar_event_line, 'Leave Applications', () {
+              Navigator.push(context, MaterialPageRoute<void>(builder: (_) => const LeaveApplicationsScreen()));
+            }),
+            _profileAction(Remix.file_list_3_line, 'Salary Slips & Payslips', () {
+              Navigator.push(context, MaterialPageRoute<void>(builder: (_) => const SalarySlipsScreen()));
+            }),
+            _profileAction(Remix.settings_3_line, 'Account Settings', () {
+              Navigator.push(context, MaterialPageRoute<void>(builder: (_) => const AccountSettingsScreen()));
+            }),
             const SizedBox(height: 14),
             Container(
               width: double.infinity,
@@ -1641,7 +1831,8 @@ class _AttendanceLogPageState extends ConsumerState<AttendanceLogPage> {
     final query = (month: _month.month, year: _month.year);
     final history = ref.watch(attendanceHistoryProvider(query));
     return Scaffold(
-      appBar: AppBar(title: const Text('Attendance Log')),
+      backgroundColor: AppColors.background,
+      appBar: AppBar(title: Text('Attendance Log', style: AppTypography.inter(fontWeight: FontWeight.w700, fontSize: 18))),
       body: history.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (error, _) => _ErrorCard(
@@ -1657,50 +1848,82 @@ class _AttendanceLogPageState extends ConsumerState<AttendanceLogPage> {
           final late = items.where((item) => '${item['status']}'.toUpperCase().contains('LATE')).length;
           final half = items.where((item) => '${item['status']}'.toUpperCase().contains('HALF')).length;
           final absent = items.where((item) => '${item['status']}'.toUpperCase().contains('ABSENT')).length;
-          final demo = _month.year == 2026 && _month.month == 11;
+          final now = DateTime.now();
+          final years = [now.year - 2, now.year - 1, now.year, now.year + 1];
+          if (!years.contains(_month.year)) years.add(_month.year);
+          final months = List.generate(12, (index) => _monthName(index + 1));
+          final workingDays = items.length;
           return ListView(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
             children: [
-              Wrap(
-                spacing: 10,
-                runSpacing: 10,
+              Row(
                 children: [
-                  _summaryCard('Total Working Days', '${demo ? 25 : items.length} Days', Remix.calendar_line, const Color(0xFF64748B)),
-                  _summaryCard('Present', '${demo ? 1 : present} Days', Remix.checkbox_circle_line, AppColors.darkPrimary),
-                  _summaryCard('Late', '${demo ? 0 : late} Days', Remix.time_line, const Color(0xFFF59E0B)),
-                  _summaryCard('Half Day', '${demo ? 2 : half} Days', Remix.contrast_2_line, const Color(0xFF8B5CF6)),
-                  _summaryCard('Absent', '${demo ? 0 : absent} Days', Remix.close_circle_line, const Color(0xFFEF4444)),
+                  Expanded(child: _summaryCard('Total Working Days', '$workingDays', Remix.calendar_check_line, const Color(0xFF3B82F6), const Color(0xFFEFF6FF))),
+                  const SizedBox(width: 10),
+                  Expanded(child: _summaryCard('Present', '$present', Remix.checkbox_circle_line, AppColors.primary, AppColors.lightPrimary)),
+                ],
+              ),
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  Expanded(child: _summaryCard('Late', '$late', Remix.time_line, const Color(0xFFF59E0B), const Color(0xFFFEF3C7))),
+                  const SizedBox(width: 10),
+                  Expanded(child: _summaryCard('Half Day', '$half', Remix.contrast_2_line, const Color(0xFF8B5CF6), const Color(0xFFF3E8FF))),
+                  const SizedBox(width: 10),
+                  Expanded(child: _summaryCard('Absent', '$absent', Remix.close_circle_line, AppColors.danger, const Color(0xFFFEE2E2))),
                 ],
               ),
               const SizedBox(height: 12),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                padding: const EdgeInsets.all(12),
                 decoration: _softCard(),
-                child: Row(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Expanded(child: Text(_monthName(_month.month), textAlign: TextAlign.center)),
-                    Expanded(child: Text('${_month.year}', textAlign: TextAlign.center)),
-                    TextButton.icon(
-                      onPressed: () => setState(() {
-                        _month = DateTime(2026, 11);
-                        _filter = 'All';
-                      }),
-                      icon: const Icon(Remix.refresh_line, size: 16),
-                      label: const Text('Reset'),
+                    Row(
+                      children: [
+                        Expanded(flex: 3, child: _monthYearMenu(months, _month.month, (value) => setState(() => _month = DateTime(_month.year, value)))),
+                        const SizedBox(width: 8),
+                        Expanded(flex: 2, child: _monthYearMenu(years.map((year) => '$year').toList(), years.indexOf(_month.year) + 1, (value) => setState(() => _month = DateTime(years[value - 1], _month.month)))),
+                        const SizedBox(width: 8),
+                        InkWell(
+                          onTap: () => setState(() {
+                            _month = DateTime(now.year, now.month);
+                            _filter = 'All';
+                          }),
+                          borderRadius: BorderRadius.circular(10),
+                          child: Container(
+                            height: 38,
+                            padding: const EdgeInsets.symmetric(horizontal: 10),
+                            decoration: BoxDecoration(
+                              color: AppColors.lightPrimary,
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(color: AppColors.primary),
+                            ),
+                            child: Row(
+                              children: [
+                                const Icon(Remix.refresh_line, size: 14, color: AppColors.darkPrimary),
+                                const SizedBox(width: 4),
+                                Text('Reset', style: AppTypography.inter(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.darkPrimary)),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 12),
-              SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: Row(
-                  children: [
-                    _logChip('All', items.length, AppColors.actionGreen),
-                    _logChip('Present', present, AppColors.darkPrimary),
-                    _logChip('Late', late, const Color(0xFFF59E0B)),
-                    _logChip('Half Day', half, const Color(0xFF8B5CF6)),
-                    _logChip('Absent', absent, const Color(0xFFEF4444)),
+                    const SizedBox(height: 10),
+                    SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(
+                        children: [
+                          _logChip('All', items.length, AppColors.actionGreen),
+                          _logChip('Present', present, AppColors.darkPrimary),
+                          _logChip('Late', late, const Color(0xFFF59E0B)),
+                          _logChip('Half Day', half, const Color(0xFF8B5CF6)),
+                          _logChip('Absent', absent, AppColors.danger),
+                        ],
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -1728,30 +1951,67 @@ class _AttendanceLogPageState extends ConsumerState<AttendanceLogPage> {
     );
   }
 
-  Widget _summaryCard(String label, String value, IconData icon, Color color) {
-    final width = MediaQuery.sizeOf(context).width;
-    return SizedBox(
-      width: (width - 42) / 2,
-      child: Container(
-        padding: const EdgeInsets.all(14),
-        decoration: _softCard(),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    label,
-                    style: AppTypography.inter(fontSize: 12, color: AppColors.textSecondary),
-                  ),
+  Widget _summaryCard(String label, String value, IconData icon, Color color, Color background) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+      decoration: _softCard(),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTypography.inter(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.textSecondary),
                 ),
-                Icon(icon, size: 16, color: color),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Text(value, style: AppTypography.inter(fontSize: 18, fontWeight: FontWeight.w800)),
+              ),
+              Container(
+                padding: const EdgeInsets.all(4),
+                decoration: BoxDecoration(color: background, borderRadius: BorderRadius.circular(6)),
+                child: Icon(icon, size: 13, color: color),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.baseline,
+            textBaseline: TextBaseline.alphabetic,
+            children: [
+              Text(value, style: AppTypography.inter(fontSize: 18, fontWeight: FontWeight.w800)),
+              const SizedBox(width: 3),
+              Text('Days', style: AppTypography.inter(fontSize: 10, fontWeight: FontWeight.w500, color: AppColors.textSecondary)),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _monthYearMenu(List<String> labels, int selected, ValueChanged<int> onChanged) {
+    return Container(
+      height: 38,
+      padding: const EdgeInsets.symmetric(horizontal: 10),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<int>(
+          value: selected,
+          isExpanded: true,
+          icon: const Icon(Remix.arrow_down_s_line, size: 16, color: AppColors.textSecondary),
+          style: AppTypography.inter(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+          items: [
+            for (var index = 0; index < labels.length; index++)
+              DropdownMenuItem(value: index + 1, child: Text(labels[index], overflow: TextOverflow.ellipsis)),
           ],
+          onChanged: (value) {
+            if (value != null) onChanged(value);
+          },
         ),
       ),
     );

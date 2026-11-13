@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 
 import '../../../core/config/app_config.dart';
 import '../../../core/errors/app_failure.dart';
+import '../domain/production_access.dart';
 import '../domain/session.dart';
 
 class AuthService {
@@ -25,14 +26,24 @@ class AuthService {
       if (user is! Map || token is! String || token.trim().isEmpty) {
         throw const AppFailure('Invalid sign-in response.');
       }
-      final role = user['role']?.toString().toUpperCase();
-      if (!AppConfig.allowedRoles.contains(role)) {
+      final role = user['role']?.toString().toUpperCase() ?? '';
+      if (const {
+        'CUSTOMER',
+        'CUSTOMER_ADMIN',
+        'COMPANY_ADMIN',
+        'SUPER_ADMIN',
+      }.contains(role)) {
         throw const AppFailure('This account cannot access this application.');
+      }
+      final account = Map<String, dynamic>.from(user);
+      if (!isProductionTeamAccount(account) &&
+          !await _profileIsProductionTeam(token)) {
+        throw const AppFailure(productionAccessMessage);
       }
       return Session(
         accessToken: token,
         email: user['email']?.toString() ?? email.trim(),
-        role: role!,
+        role: AppConfig.allowedRoles.contains(role) ? role : 'EMPLOYEE',
       );
     } on DioException catch (error) {
       final message = _serverMessage(error);
@@ -45,6 +56,21 @@ class AuthService {
       throw error.error is AppFailure
           ? error.error!
           : AppFailure.fromDio(error);
+    }
+  }
+
+  Future<bool> _profileIsProductionTeam(String token) async {
+    try {
+      final response = await _dio.get<Object?>(
+        '/employees/profile/me',
+        options: Options(extra: {'bearer': token}),
+      );
+      final body = response.data;
+      if (body is! Map) return false;
+      final payload = body['data'] is Map ? body['data'] as Map : body;
+      return isProductionTeamAccount(Map<String, dynamic>.from(payload));
+    } on DioException {
+      return false;
     }
   }
 }

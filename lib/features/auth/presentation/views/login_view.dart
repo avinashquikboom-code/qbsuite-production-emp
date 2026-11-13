@@ -54,6 +54,9 @@ class _LoginViewState extends ConsumerState<LoginView> {
   Widget build(BuildContext context) {
     final width = MediaQuery.sizeOf(context).width;
     final compact = width < 360;
+    final authError = ref.watch(authViewModelProvider).error;
+    final message = _error ??
+        (authError is AppFailure ? authError.message : authError?.toString());
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
       resizeToAvoidBottomInset: true,
@@ -242,10 +245,10 @@ class _LoginViewState extends ConsumerState<LoginView> {
                                     ),
                                   ),
                                 ),
-                              if (_error != null) ...[
+                              if (message != null && message.isNotEmpty) ...[
                                 const SizedBox(height: 8),
                                 Text(
-                                  _error!,
+                                  message,
                                   style: AppTypography.inter(
                                     fontSize: 12,
                                     fontWeight: FontWeight.w500,

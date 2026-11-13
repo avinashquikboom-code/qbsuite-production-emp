@@ -55,7 +55,10 @@ Dio createApiDio({required SessionStore store, required String baseUrl}) {
         options.headers.remove('Authorization');
         options.headers.remove('authorization');
         options.extra['_sessionVersion'] = store.version;
-        final token = store.current?.accessToken;
+        final override = options.extra['bearer'];
+        final token = override is String && override.isNotEmpty
+            ? override
+            : store.current?.accessToken;
         if (options.extra['public'] != true && token != null) {
           options.headers['Authorization'] = 'Bearer $token';
         }

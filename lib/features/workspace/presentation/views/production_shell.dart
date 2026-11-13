@@ -6,7 +6,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../auth/presentation/viewmodels/auth_viewmodel.dart';
 import '../providers/production_providers.dart';
-import 'monthly_reports_page.dart';
+import 'employee_screens.dart';
 import 'production_pages.dart';
 import 'request_overtime_sheet.dart';
 
@@ -21,6 +21,11 @@ class _ProductionShellState extends ConsumerState<ProductionShell> {
   final _scaffoldKey = GlobalKey<ScaffoldState>();
   int _index = 0;
   String _drawerItem = 'Dashboard';
+
+  void _open(String label, Widget page) {
+    setState(() => _drawerItem = label);
+    Navigator.push(context, MaterialPageRoute<void>(builder: (_) => page));
+  }
 
   void _selectTab(int index) {
     setState(() {
@@ -63,15 +68,19 @@ class _ProductionShellState extends ConsumerState<ProductionShell> {
                   builder: (_) => const AttendanceLogPage(),
                 ),
               );
-            case 'Monthly Reports':
-              setState(() => _drawerItem = label);
-              Navigator.push(context, MaterialPageRoute<void>(builder: (_) => const MonthlyReportsPage()));
             case 'Request Overtime':
               setState(() => _drawerItem = label);
               showRequestOvertimeSheet(context);
+            case 'Requests & Leaves':
+              _open(label, const LeaveApplicationsScreen());
+            case 'Expenses & Claims':
+              _open(label, const ExpensesClaimsScreen());
+            case 'Remote Work':
+              _open(label, const RemoteWorkScreen());
+            case 'Salary Slips':
+              _open(label, const SalarySlipsScreen());
             case 'Settings':
-              setState(() => _drawerItem = label);
-              _selectTab(3);
+              _open(label, const AccountSettingsScreen());
             default:
               setState(() => _drawerItem = label);
               Navigator.push(
@@ -115,29 +124,33 @@ class _ProductionShellState extends ConsumerState<ProductionShell> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Container(
-              width: 36,
-              height: 28,
-              alignment: Alignment.center,
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
               decoration: BoxDecoration(
                 color: selected ? AppColors.lightPrimary : Colors.transparent,
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: BorderRadius.circular(14),
               ),
               child: Icon(
                 selected ? active : icon,
-                size: 22,
+                size: 20,
                 color: selected ? AppColors.primary : AppColors.textSecondary,
               ),
             ),
             const SizedBox(height: 2),
-            Text(
-              label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: AppTypography.inter(
-                fontSize: 11,
-                fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-                color: selected ? AppColors.primary : AppColors.textSecondary,
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 2),
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  style: AppTypography.inter(
+                    fontSize: 10,
+                    fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
+                    color: selected ? AppColors.primary : AppColors.textSecondary,
+                  ),
+                ),
               ),
             ),
           ],
@@ -285,7 +298,6 @@ class _ProductionDrawer extends ConsumerWidget {
                   _tile('Dashboard', Remix.home_5_line),
                   _section('HRM & WORKPLACE'),
                   _tile('Attendance', Remix.fingerprint_line),
-                  _tile('Monthly Reports', Remix.file_pdf_line),
                   _tile('Request Overtime', Remix.time_line),
                   _tile('Requests & Leaves', Remix.calendar_event_line),
                   _tile('Expenses & Claims', Remix.money_dollar_circle_line),

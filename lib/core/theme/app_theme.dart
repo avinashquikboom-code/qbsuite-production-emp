@@ -1,16 +1,17 @@
 import '../icons/remix_icon.dart';
 
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 import 'app_colors.dart';
 import 'app_typography.dart';
 
 /// Apply using MaterialApp(theme: AppTheme.light).
-/// Register Inter 400/500/600/700 in the application's pubspec.yaml.
+/// Text uses Outfit, the same family as the CRM and visitor apps.
 /// UI icons must come from remixicon; do not use Icons.* glyphs.
 abstract final class AppTheme {
   static ThemeData get lightTheme => light;
-  static const buttonRadius = 8.0;
+  static const buttonRadius = 12.0;
   static const controlPadding = EdgeInsets.symmetric(
     horizontal: 16,
     vertical: 12,
@@ -60,8 +61,8 @@ abstract final class AppTheme {
       padding: const WidgetStatePropertyAll(controlPadding),
       shape: WidgetStatePropertyAll(shape),
       minimumSize: const WidgetStatePropertyAll(Size(48, 48)),
-      textStyle: const WidgetStatePropertyAll(
-        TextStyle(fontFamily: 'Inter', fontWeight: FontWeight.w600),
+      textStyle: WidgetStatePropertyAll(
+        GoogleFonts.outfit(fontWeight: FontWeight.w700, fontSize: 15),
       ),
     );
     return ThemeData(
@@ -75,30 +76,14 @@ abstract final class AppTheme {
       colorScheme: scheme,
       primaryColor: AppColors.primary,
       scaffoldBackgroundColor: AppColors.background,
-      fontFamily: 'Inter',
-      textTheme: AppTypography.interTextTheme().copyWith(
-        bodyMedium: AppTypography.inter(
-          color: AppColors.textPrimary,
-          fontWeight: FontWeight.w400,
-        ),
-        bodySmall: AppTypography.inter(
-          color: AppColors.textSecondary,
-          fontWeight: FontWeight.w400,
-        ),
-        labelLarge: AppTypography.inter(
-          color: AppColors.textPrimary,
-          fontWeight: FontWeight.w600,
-        ),
-        titleMedium: AppTypography.inter(
-          color: AppColors.textPrimary,
-          fontWeight: FontWeight.w600,
-        ),
-        headlineSmall: AppTypography.inter(
-          color: AppColors.textPrimary,
-          fontWeight: FontWeight.w700,
-        ),
+      textTheme: GoogleFonts.outfitTextTheme().apply(
+        bodyColor: AppColors.textPrimary,
+        displayColor: AppColors.textPrimary,
       ),
-      primaryTextTheme: AppTypography.interTextTheme(),
+      primaryTextTheme: GoogleFonts.outfitTextTheme().apply(
+        bodyColor: AppColors.textPrimary,
+        displayColor: AppColors.textPrimary,
+      ),
       elevatedButtonTheme: ElevatedButtonThemeData(style: buttonStyle),
       filledButtonTheme: FilledButtonThemeData(style: buttonStyle),
       outlinedButtonTheme: OutlinedButtonThemeData(
@@ -107,6 +92,7 @@ abstract final class AppTheme {
           side: const BorderSide(color: AppColors.border),
           shape: shape,
           padding: controlPadding,
+          textStyle: GoogleFonts.outfit(fontWeight: FontWeight.w700, fontSize: 15),
         ),
       ),
       textButtonTheme: TextButtonThemeData(
@@ -114,6 +100,7 @@ abstract final class AppTheme {
           foregroundColor: AppColors.darkPrimary,
           shape: shape,
           padding: controlPadding,
+          textStyle: GoogleFonts.outfit(fontWeight: FontWeight.w700, fontSize: 15),
         ),
       ),
       cardTheme: CardThemeData(
@@ -136,6 +123,7 @@ abstract final class AppTheme {
           borderRadius: BorderRadius.circular(buttonRadius),
           borderSide: const BorderSide(color: AppColors.primary, width: 2),
         ),
+        hintStyle: GoogleFonts.outfit(color: AppColors.textSecondary, fontSize: 14),
       ),
       checkboxTheme: CheckboxThemeData(
         fillColor: WidgetStateProperty.resolveWith(
@@ -166,11 +154,12 @@ abstract final class AppTheme {
         linearTrackColor: AppColors.lightPrimary,
         circularTrackColor: AppColors.lightPrimary,
       ),
-      tabBarTheme: const TabBarThemeData(
+      tabBarTheme: TabBarThemeData(
         labelColor: AppColors.darkPrimary,
         unselectedLabelColor: AppColors.textSecondary,
         indicatorColor: AppColors.primary,
-        labelStyle: TextStyle(fontFamily: 'Inter', fontWeight: FontWeight.w600),
+        labelStyle: GoogleFonts.outfit(fontWeight: FontWeight.w600, fontSize: 14),
+        unselectedLabelStyle: GoogleFonts.outfit(fontWeight: FontWeight.w500, fontSize: 14),
       ),
       iconTheme: const IconThemeData(color: AppColors.textPrimary, size: 22),
       navigationBarTheme: NavigationBarThemeData(
@@ -187,22 +176,28 @@ abstract final class AppTheme {
           ),
         ),
       ),
-      navigationRailTheme: const NavigationRailThemeData(
+      navigationRailTheme: NavigationRailThemeData(
         backgroundColor: AppColors.surface,
         indicatorColor: AppColors.lightPrimary,
-        selectedIconTheme: IconThemeData(color: AppColors.primary),
-        unselectedIconTheme: IconThemeData(color: AppColors.textSecondary),
-        selectedLabelTextStyle: TextStyle(
+        selectedIconTheme: const IconThemeData(color: AppColors.primary),
+        unselectedIconTheme: const IconThemeData(color: AppColors.textSecondary),
+        selectedLabelTextStyle: GoogleFonts.outfit(
           color: AppColors.darkPrimary,
-          fontFamily: 'Inter',
+          fontSize: 14,
+          fontWeight: FontWeight.w600,
+        ),
+        unselectedLabelTextStyle: GoogleFonts.outfit(
+          color: AppColors.textSecondary,
+          fontSize: 14,
+          fontWeight: FontWeight.w500,
         ),
       ),
       bottomNavigationBarTheme: BottomNavigationBarThemeData(
         backgroundColor: AppColors.surface,
         selectedItemColor: AppColors.primary,
         unselectedItemColor: AppColors.textSecondary,
-        selectedLabelStyle: AppTypography.inter(fontWeight: FontWeight.w600),
-        unselectedLabelStyle: AppTypography.inter(fontWeight: FontWeight.w500),
+        selectedLabelStyle: AppTypography.inter(fontWeight: FontWeight.w600, fontSize: 12),
+        unselectedLabelStyle: AppTypography.inter(fontWeight: FontWeight.w500, fontSize: 12),
       ),
       listTileTheme: const ListTileThemeData(
         selectedColor: AppColors.darkPrimary,
@@ -212,12 +207,12 @@ abstract final class AppTheme {
         backgroundColor: AppColors.surface,
         foregroundColor: AppColors.textPrimary,
         surfaceTintColor: Colors.transparent,
-        titleTextStyle: AppTypography.inter(
+        titleTextStyle: GoogleFonts.outfit(
           fontSize: 18,
           fontWeight: FontWeight.w700,
           color: AppColors.textPrimary,
         ),
-        toolbarTextStyle: AppTypography.inter(color: AppColors.textPrimary),
+        toolbarTextStyle: GoogleFonts.outfit(fontSize: 14, color: AppColors.textPrimary),
       ),
     );
   }

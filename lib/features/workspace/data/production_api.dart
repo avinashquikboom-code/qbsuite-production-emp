@@ -37,6 +37,18 @@ class ProductionApi {
 
   Future<void> punchOut() => _punch('/attendance/check-out');
 
+  Future<void> startBreak() => _send('/attendance/break/start');
+
+  Future<void> endBreak() => _send('/attendance/break/end');
+
+  Future<double?> distanceToOffice(Map office) async {
+    final lat = double.tryParse('${office['latitude']}');
+    final lng = double.tryParse('${office['longitude']}');
+    if (lat == null || lng == null) return null;
+    final position = await _position();
+    return Geolocator.distanceBetween(position.latitude, position.longitude, lat, lng);
+  }
+
   Future<List<Map<String, dynamic>>> myOvertime() => _list('/overtime', query: {'limit': 20});
 
   Future<Map<String, dynamic>> monthlyReports() => _object('/hrm/my-reports');
@@ -95,6 +107,33 @@ class ProductionApi {
   Future<List<Map<String, dynamic>>> payslips() =>
       _list('/admin/payroll/slips');
 
+  Future<Map<String, dynamic>> salary() => _object('/admin/payroll/salary');
+
+  Future<Map<String, dynamic>> salaryTarget() => _object('/admin/payroll/targets/me');
+
+  Future<List<Map<String, dynamic>>> leaveBalances() => _list('/leaves/balances');
+
+  Future<List<Map<String, dynamic>>> leaveTypes() => _list('/leaves/types');
+
+  Future<List<Map<String, dynamic>>> leaveRequests() =>
+      _list('/leaves/requests', query: {'limit': 50});
+
+  Future<void> applyLeave(Map<String, dynamic> body) => _send('/leaves/requests', body: body);
+
+  Future<List<Map<String, dynamic>>> remoteRequests() => _list('/remote-requests');
+
+  Future<void> applyRemote(Map<String, dynamic> body) => _send('/remote-requests', body: body);
+
+  Future<List<Map<String, dynamic>>> claims() => _list('/claims', query: {'limit': 50});
+
+  Future<void> applyClaim(Map<String, dynamic> body) => _send('/claims', body: body);
+
+  Future<void> updateProfile(Map<String, dynamic> body) =>
+      _send('/auth/profile', body: body, method: 'PUT');
+
+  Future<void> changePassword(Map<String, dynamic> body) =>
+      _send('/auth/profile/password', body: body);
+
   Future<Map<String, dynamic>> _object(String path) async {
     try {
       final response = await _dio.get<Object>(path);
@@ -142,11 +181,18 @@ class ProductionApi {
     return Geolocator.getCurrentPosition();
   }
 
-  Future<void> _send(String path) async {
+  Future<void> _send(String path, {Map<String, dynamic>? body, String method = 'POST'}) async {
     try {
-      await _dio.post<Object>(path, data: const <String, dynamic>{});
+      await _dio.request<Object>(
+        path,
+        data: body ?? const <String, dynamic>{},
+        options: Options(method: method),
+      );
     } on DioException catch (error) {
-      throw error.error is AppFailure ? error.error! : AppFailure.fromDio(error);
+      final data = error.response?.data;
+      final message = data is Map ? data['message'] : null;
+      final text = message is List ? message.join('\n') : message?.toString();
+      throw AppFailure(text != null && text.isNotEmpty ? text : AppFailure.fromDio(error).message);
     }
   }
 
