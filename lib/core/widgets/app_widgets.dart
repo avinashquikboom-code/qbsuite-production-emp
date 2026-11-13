@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../icons/remix_icon.dart';
+import '../theme/app_colors.dart';
 import 'responsive/responsive.dart';
 
 class AppButton extends StatelessWidget {
@@ -91,13 +92,15 @@ class AppLoader extends StatelessWidget {
 }
 
 class AppLogo extends StatelessWidget {
-  const AppLogo({super.key, this.width = 240});
+  const AppLogo({super.key, this.width = 240, this.height = 78});
   final double width;
+  final double height;
 
   @override
   Widget build(BuildContext context) => Image.asset(
-    'assets/images/app_logo_brand.png',
+    'assets/images/logo.png',
     width: width,
+    height: height,
     fit: BoxFit.contain,
     semanticLabel: 'QB Suite logo',
   );
@@ -107,17 +110,31 @@ class AppSplashScreen extends StatelessWidget {
   const AppSplashScreen({super.key});
 
   @override
-  Widget build(BuildContext context) => Scaffold(
+  Widget build(BuildContext context) => const Scaffold(
+    backgroundColor: Colors.white,
     body: SafeArea(
       child: Center(
         child: Column(
-          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const AppLogo(),
-            const SizedBox(height: 24),
-            const SizedBox.square(
-              dimension: 24,
-              child: CircularProgressIndicator(semanticsLabel: 'Loading'),
+            Text(
+              'QB SUITE',
+              style: TextStyle(
+                fontSize: 30,
+                fontWeight: FontWeight.w700,
+                color: AppColors.textPrimary,
+                letterSpacing: -0.5,
+              ),
+            ),
+            SizedBox(height: 8),
+            Text(
+              'Your Business Suite',
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+                letterSpacing: 2,
+                color: AppColors.textSecondary,
+              ),
             ),
           ],
         ),

@@ -84,8 +84,8 @@ class _LoginViewState extends ConsumerState<LoginView> {
                       children: [
                         const SizedBox(height: 8),
                         Image.asset(
-                          'assets/images/app_logo_brand.png',
-                          height: 68,
+                          'assets/images/logo.png',
+                          height: compact ? 64 : 78,
                           fit: BoxFit.contain,
                           semanticLabel: 'QB Suite logo',
                         ),
