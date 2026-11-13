@@ -1,7 +1,7 @@
 export '../../../workspace/presentation/views/production_shell.dart'
     show ProductionShell;
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 import '../../../workspace/presentation/views/production_shell.dart';
 

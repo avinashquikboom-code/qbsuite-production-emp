@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// QB Suite brand specification: design-system/colors.json.
 /// Identical in CRM, Customer and Production. Do not create module palettes.

@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// Shared responsive layout system for QB Suite apps.
 /// Breakpoints are guidance only — all logic derives from the live
