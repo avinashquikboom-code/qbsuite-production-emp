@@ -1,6 +1,10 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/employee_push_notifications.dart';
 import '../../../../core/errors/app_failure.dart';
+import '../../../../core/network/dio_client.dart';
 import '../../../../core/storage/session_store.dart';
 import '../../domain/session.dart';
 import '../providers/auth_providers.dart';
@@ -18,7 +22,13 @@ class AuthViewModel extends AsyncNotifier<Session?> {
       if (ref.mounted) state = AsyncData(session);
     });
     ref.onDispose(subscription.cancel);
-    return ref.watch(authRepositoryProvider).restore();
+    final session = await ref.watch(authRepositoryProvider).restore();
+    if (session != null) {
+      unawaited(
+        EmployeePushNotifications.instance.register(ref.read(dioProvider)),
+      );
+    }
+    return session;
   }
 
   Future<void> signIn(String email, String password) async {
@@ -26,7 +36,9 @@ class AuthViewModel extends AsyncNotifier<Session?> {
     final identifier = email.trim();
     if (!_acceptsLoginIdentifier(identifier) || password.isEmpty) {
       state = AsyncError(
-        const AppFailure('Enter your employee ID, email, or mobile and password.'),
+        const AppFailure(
+          'Enter your employee ID, email, or mobile and password.',
+        ),
         StackTrace.current,
       );
       return;
@@ -36,6 +48,10 @@ class AuthViewModel extends AsyncNotifier<Session?> {
     final result = await AsyncValue.guard(
       () => ref.read(authRepositoryProvider).signIn(email, password),
     );
+    final session = result.asData?.value;
+    if (session != null) {
+      await EmployeePushNotifications.instance.register(ref.read(dioProvider));
+    }
     if (ref.mounted) state = result;
     _busy = false;
   }
@@ -43,7 +59,9 @@ class AuthViewModel extends AsyncNotifier<Session?> {
   bool _acceptsLoginIdentifier(String value) {
     if (RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$').hasMatch(value)) return true;
     final digits = value.replaceAll(RegExp(r'\D'), '');
-    if (!RegExp(r'[A-Za-z]').hasMatch(value) && digits.length >= 10 && digits.length <= 15) {
+    if (!RegExp(r'[A-Za-z]').hasMatch(value) &&
+        digits.length >= 10 &&
+        digits.length <= 15) {
       return true;
     }
     final code = value.replaceAll(RegExp(r'\s+'), '');
@@ -55,6 +73,9 @@ class AuthViewModel extends AsyncNotifier<Session?> {
     _busy = true;
     state = const AsyncLoading();
     final result = await AsyncValue.guard<Session?>(() async {
+      await EmployeePushNotifications.instance.unregister(
+        ref.read(dioProvider),
+      );
       await ref.read(authRepositoryProvider).signOut();
       return null;
     });

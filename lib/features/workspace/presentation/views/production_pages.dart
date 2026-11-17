@@ -584,6 +584,28 @@ class _AttendanceCardState extends ConsumerState<_AttendanceCard> {
               ],
             ),
           ),
+          if ('${details['lateMarkStatus'] ?? ''}'.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFFF7ED),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: const Color(0xFFFED7AA)),
+              ),
+              child: Row(
+                children: [
+                  _metric(Remix.alarm_warning_line, const Color(0xFFEA580C), 'Late Today', details['lateMarkStatus'] == 'no_shift' ? '—' : '${_integer(details['lateMinutes'])} min'),
+                  _divider(),
+                  _metric(Remix.time_line, const Color(0xFF3B82F6), 'Rate', details['isEligibleLateMark'] == true ? '${_money(details['lateRatePerMinute'])}/min' : '—'),
+                  _divider(),
+                  _metric(Remix.money_rupee_circle_line, const Color(0xFFEF4444), 'Deduction', details['lateMarkStatus'] == 'no_shift' ? '—' : _money(details['lateDeduction'])),
+                ],
+              ),
+            ),
+          ],
+          if (details['lateMarkStatus'] == 'no_shift')
+            const Padding(padding: EdgeInsets.only(top: 8), child: Text('No shift assigned. Contact your administrator.')),
           const SizedBox(height: 14),
           Row(
             children: [
@@ -785,6 +807,14 @@ class _AttendanceCardState extends ConsumerState<_AttendanceCard> {
       return '${minutes ~/ 60}h ${minutes % 60}m';
     }
     return _displayDuration(value);
+  }
+
+  int _integer(Object? value) =>
+      value is num ? value.toInt() : int.tryParse('$value') ?? 0;
+
+  String _money(Object? value) {
+    final amount = value is num ? value.toDouble() : double.tryParse('$value') ?? 0;
+    return '₹${amount == amount.roundToDouble() ? amount.toInt() : amount.toStringAsFixed(2)}';
   }
 }
 

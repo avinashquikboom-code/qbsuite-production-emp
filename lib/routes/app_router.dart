@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../core/widgets/app_widgets.dart';
+import '../core/employee_push_notifications.dart';
 import '../features/auth/presentation/viewmodels/auth_viewmodel.dart';
 import '../features/auth/presentation/views/login_view.dart';
 import '../features/auth/presentation/views/splash_view.dart';
@@ -17,6 +18,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
   final refresh = ValueNotifier(0);
   ref.listen(authViewModelProvider, (_, next) => refresh.value++);
   final router = GoRouter(
+    navigatorKey: EmployeePushNotifications.navigatorKey,
     initialLocation: '/splash',
     refreshListenable: refresh,
     redirect: (context, route) {
@@ -50,10 +52,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       body: const AppEmptyState(title: 'Page not found'),
     ),
     routes: [
-      GoRoute(
-        path: '/splash',
-        builder: (_, state) => const SplashView(),
-      ),
+      GoRoute(path: '/splash', builder: (_, state) => const SplashView()),
       GoRoute(
         path: '/login',
         name: RouteNames.login,
