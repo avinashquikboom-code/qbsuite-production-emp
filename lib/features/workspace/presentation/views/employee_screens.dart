@@ -1013,7 +1013,7 @@ class _SalarySlipsScreenState extends ConsumerState<SalarySlipsScreen> {
           const SizedBox(height: 12),
           _pair('DESIGNATION', pick(const ['designation'], '—'), 'LOCATION', pick(const ['branch', 'office'], 'Head Office')),
           const SizedBox(height: 12),
-          _pair('DEPARTMENT', pick(const ['department'], '—'), 'REPORTING MANAGER', pick(const ['manager', 'reportingManager'], 'Direct Reporting')),
+          _pair('DEPARTMENT', pick(const ['department'], '—'), '', ''),
         ],
       ),
     );
