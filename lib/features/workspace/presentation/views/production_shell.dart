@@ -44,7 +44,7 @@ class _ProductionShellState extends ConsumerState<ProductionShell> {
     final pages = [
       ProductionHomePage(
         onOpenDrawer: () => _scaffoldKey.currentState?.openDrawer(),
-        onOpenTasks: () {},
+        onOpenTasks: () => _selectTab(2),
       ),
       const ProductionWorkPage(),
       const ProductionCalendarPage(),
@@ -148,7 +148,9 @@ class _ProductionShellState extends ConsumerState<ProductionShell> {
                   style: AppTypography.inter(
                     fontSize: 10,
                     fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
-                    color: selected ? AppColors.primary : AppColors.textSecondary,
+                    color: selected
+                        ? AppColors.primary
+                        : AppColors.textSecondary,
                   ),
                 ),
               ),
@@ -195,27 +197,27 @@ class _ProductionDrawer extends ConsumerWidget {
                   const SizedBox(width: 10),
                   Expanded(
                     child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'QB Suite Production',
-                        maxLines: 2,
-                        style: AppTypography.inter(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w800,
-                          height: 1.15,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'QB Suite Production',
+                          maxLines: 2,
+                          style: AppTypography.inter(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w800,
+                            height: 1.15,
+                          ),
                         ),
-                      ),
-                      Text(
-                        'BUSINESS SUITE',
-                        style: AppTypography.inter(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: 0.8,
-                          color: AppColors.darkPrimary,
+                        Text(
+                          'BUSINESS SUITE',
+                          style: AppTypography.inter(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 0.8,
+                            color: AppColors.darkPrimary,
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
                     ),
                   ),
                 ],

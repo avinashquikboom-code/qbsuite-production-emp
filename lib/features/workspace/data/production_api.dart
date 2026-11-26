@@ -5,9 +5,13 @@ import 'package:geolocator/geolocator.dart';
 import '../../../core/errors/app_failure.dart';
 import '../../../core/network/dio_client.dart';
 
-final productionApiProvider = Provider<ProductionApi>((ref) => ProductionApi(ref.watch(dioProvider)));
+final productionApiProvider = Provider<ProductionApi>(
+  (ref) => ProductionApi(ref.watch(dioProvider)),
+);
 
-final myOvertimeProvider = FutureProvider<List<Map<String, dynamic>>>((ref) => ref.watch(productionApiProvider).myOvertime());
+final myOvertimeProvider = FutureProvider<List<Map<String, dynamic>>>(
+  (ref) => ref.watch(productionApiProvider).myOvertime(),
+);
 
 class ProductionApi {
   ProductionApi(this._dio);
@@ -46,10 +50,16 @@ class ProductionApi {
     final lng = double.tryParse('${office['longitude']}');
     if (lat == null || lng == null) return null;
     final position = await _position();
-    return Geolocator.distanceBetween(position.latitude, position.longitude, lat, lng);
+    return Geolocator.distanceBetween(
+      position.latitude,
+      position.longitude,
+      lat,
+      lng,
+    );
   }
 
-  Future<List<Map<String, dynamic>>> myOvertime() => _list('/overtime', query: {'limit': 20});
+  Future<List<Map<String, dynamic>>> myOvertime() =>
+      _list('/overtime', query: {'limit': 20});
 
   Future<Map<String, dynamic>> monthlyReports() => _object('/hrm/my-reports');
 
@@ -66,32 +76,56 @@ class ProductionApi {
       final data = error.response?.data;
       final message = data is Map ? data['message'] : null;
       final text = message is List ? message.join('\n') : message?.toString();
-      throw AppFailure(text != null && text.isNotEmpty ? text : AppFailure.fromDio(error).message);
+      throw AppFailure(
+        text != null && text.isNotEmpty
+            ? text
+            : AppFailure.fromDio(error).message,
+      );
     }
   }
 
-  Future<void> markOvertime(int id, {required bool end}) => _send('/overtime/$id/${end ? 'end' : 'start'}');
+  Future<void> markOvertime(int id, {required bool end}) =>
+      _send('/overtime/$id/${end ? 'end' : 'start'}');
 
-  Future<void> cancelOvertime(int id, {required String reason, String? remarks}) async {
+  Future<void> cancelOvertime(
+    int id, {
+    required String reason,
+    String? remarks,
+  }) async {
     try {
-      await _dio.post<Object>('/overtime/$id/cancel', data: {
-        'reason': reason,
-        if (remarks != null && remarks.trim().isNotEmpty) 'remarks': remarks.trim(),
-      });
+      await _dio.post<Object>(
+        '/overtime/$id/cancel',
+        data: {
+          'reason': reason,
+          if (remarks != null && remarks.trim().isNotEmpty)
+            'remarks': remarks.trim(),
+        },
+      );
     } on DioException catch (error) {
       final data = error.response?.data;
       final message = data is Map ? data['message'] : null;
       final text = message is List ? message.join('\n') : message?.toString();
-      throw AppFailure(text != null && text.isNotEmpty ? text : AppFailure.fromDio(error).message);
+      throw AppFailure(
+        text != null && text.isNotEmpty
+            ? text
+            : AppFailure.fromDio(error).message,
+      );
     }
   }
 
-  Future<List<Map<String, dynamic>>> works({String? date, String? month}) {
+  Future<List<Map<String, dynamic>>> works({
+    String? date,
+    String? month,
+    String? dateFrom,
+    String? dateTo,
+  }) {
     return _list(
       '/works/employee/calendar',
       query: {
         if (date != null && date.isNotEmpty) 'date': date,
         if (month != null && month.isNotEmpty) 'month': month,
+        if (dateFrom != null && dateFrom.isNotEmpty) 'dateFrom': dateFrom,
+        if (dateTo != null && dateTo.isNotEmpty) 'dateTo': dateTo,
       },
     );
   }
@@ -117,26 +151,36 @@ class ProductionApi {
       final data = error.response?.data;
       final message = data is Map ? data['message'] : null;
       final text = message is List ? message.join('\n') : message?.toString();
-      throw AppFailure(text != null && text.isNotEmpty ? text : 'Unable to download the salary slip PDF.');
+      throw AppFailure(
+        text != null && text.isNotEmpty
+            ? text
+            : 'Unable to download the salary slip PDF.',
+      );
     }
   }
 
-  Future<List<Map<String, dynamic>>> leaveBalances() => _list('/leaves/balances');
+  Future<List<Map<String, dynamic>>> leaveBalances() =>
+      _list('/leaves/balances');
 
   Future<List<Map<String, dynamic>>> leaveTypes() => _list('/leaves/types');
 
   Future<List<Map<String, dynamic>>> leaveRequests() =>
       _list('/leaves/requests', query: {'limit': 50});
 
-  Future<void> applyLeave(Map<String, dynamic> body) => _send('/leaves/requests', body: body);
+  Future<void> applyLeave(Map<String, dynamic> body) =>
+      _send('/leaves/requests', body: body);
 
-  Future<List<Map<String, dynamic>>> remoteRequests() => _list('/remote-requests');
+  Future<List<Map<String, dynamic>>> remoteRequests() =>
+      _list('/remote-requests');
 
-  Future<void> applyRemote(Map<String, dynamic> body) => _send('/remote-requests', body: body);
+  Future<void> applyRemote(Map<String, dynamic> body) =>
+      _send('/remote-requests', body: body);
 
-  Future<List<Map<String, dynamic>>> claims() => _list('/claims', query: {'limit': 50});
+  Future<List<Map<String, dynamic>>> claims() =>
+      _list('/claims', query: {'limit': 50});
 
-  Future<void> applyClaim(Map<String, dynamic> body) => _send('/claims', body: body);
+  Future<void> applyClaim(Map<String, dynamic> body) =>
+      _send('/claims', body: body);
 
   Future<void> updateProfile(Map<String, dynamic> body) =>
       _send('/auth/profile', body: body, method: 'PUT');
@@ -149,7 +193,9 @@ class ProductionApi {
       final response = await _dio.get<Object>(path);
       return _asMap(response.data);
     } on DioException catch (error) {
-      throw error.error is AppFailure ? error.error! : AppFailure.fromDio(error);
+      throw error.error is AppFailure
+          ? error.error!
+          : AppFailure.fromDio(error);
     }
   }
 
@@ -161,37 +207,53 @@ class ProductionApi {
       final response = await _dio.get<Object>(path, queryParameters: query);
       return _asList(response.data);
     } on DioException catch (error) {
-      throw error.error is AppFailure ? error.error! : AppFailure.fromDio(error);
+      throw error.error is AppFailure
+          ? error.error!
+          : AppFailure.fromDio(error);
     }
   }
 
   Future<void> _punch(String path) async {
     final position = await _position();
     try {
-      await _dio.post<Object>(path, data: {
-        'latitude': position.latitude,
-        'longitude': position.longitude,
-        'accuracy': position.accuracy,
-      });
+      await _dio.post<Object>(
+        path,
+        data: {
+          'latitude': position.latitude,
+          'longitude': position.longitude,
+          'accuracy': position.accuracy,
+        },
+      );
     } on DioException catch (error) {
-      throw error.error is AppFailure ? error.error! : AppFailure.fromDio(error);
+      throw error.error is AppFailure
+          ? error.error!
+          : AppFailure.fromDio(error);
     }
   }
 
   Future<Position> _position() async {
     final enabled = await Geolocator.isLocationServiceEnabled();
-    if (!enabled) throw const AppFailure('Turn on location to record attendance.');
+    if (!enabled) {
+      throw const AppFailure('Turn on location to record attendance.');
+    }
     var permission = await Geolocator.checkPermission();
     if (permission == LocationPermission.denied) {
       permission = await Geolocator.requestPermission();
     }
-    if (permission == LocationPermission.denied || permission == LocationPermission.deniedForever) {
-      throw const AppFailure('Location permission is required to record attendance.');
+    if (permission == LocationPermission.denied ||
+        permission == LocationPermission.deniedForever) {
+      throw const AppFailure(
+        'Location permission is required to record attendance.',
+      );
     }
     return Geolocator.getCurrentPosition();
   }
 
-  Future<void> _send(String path, {Map<String, dynamic>? body, String method = 'POST'}) async {
+  Future<void> _send(
+    String path, {
+    Map<String, dynamic>? body,
+    String method = 'POST',
+  }) async {
     try {
       await _dio.request<Object>(
         path,
@@ -202,7 +264,11 @@ class ProductionApi {
       final data = error.response?.data;
       final message = data is Map ? data['message'] : null;
       final text = message is List ? message.join('\n') : message?.toString();
-      throw AppFailure(text != null && text.isNotEmpty ? text : AppFailure.fromDio(error).message);
+      throw AppFailure(
+        text != null && text.isNotEmpty
+            ? text
+            : AppFailure.fromDio(error).message,
+      );
     }
   }
 
@@ -214,17 +280,27 @@ class ProductionApi {
       final minute = parsed.minute.toString().padLeft(2, '0');
       return '$hour:$minute ${parsed.hour >= 12 ? 'PM' : 'AM'}';
     }
+
     final office = row['office'];
     final branch = office is Map
         ? '${office['name'] ?? ''} ${office['city'] ?? ''}'.trim()
         : '${row['branch'] ?? row['locationIn'] ?? ''}';
     final date = DateTime.tryParse('${row['date']}')?.toLocal();
-    const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+    const days = [
+      'Monday',
+      'Tuesday',
+      'Wednesday',
+      'Thursday',
+      'Friday',
+      'Saturday',
+      'Sunday',
+    ];
     return {
       ...row,
       'checkIn': row['checkIn'] ?? clock(row['punchIn']),
       'checkOut': row['checkOut'] ?? clock(row['punchOut']),
-      'workHours': row['workHours'] ?? row['workingDuration'] ?? row['workingHours'],
+      'workHours':
+          row['workHours'] ?? row['workingDuration'] ?? row['workingHours'],
       'branch': branch,
       'day': row['day'] ?? (date == null ? '' : days[date.weekday - 1]),
       'breakDuration': row['breakDuration'] ?? row['totalBreakDuration'],

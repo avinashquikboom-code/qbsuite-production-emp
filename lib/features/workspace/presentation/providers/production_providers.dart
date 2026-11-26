@@ -14,6 +14,18 @@ final worksProvider = FutureProvider<List<Map<String, dynamic>>>((ref) {
   return ref.watch(productionApiProvider).works();
 });
 
+final calendarWorksProvider =
+    FutureProvider.family<
+      List<Map<String, dynamic>>,
+      ({DateTime from, DateTime to})
+    >((ref, range) {
+      String day(DateTime value) =>
+          '${value.year.toString().padLeft(4, '0')}-${value.month.toString().padLeft(2, '0')}-${value.day.toString().padLeft(2, '0')}';
+      return ref
+          .watch(productionApiProvider)
+          .works(dateFrom: day(range.from), dateTo: day(range.to));
+    });
+
 final payslipsProvider = FutureProvider<List<Map<String, dynamic>>>((ref) {
   return ref.watch(productionApiProvider).payslips();
 });
@@ -23,8 +35,7 @@ final attendanceHistoryProvider =
       ref,
       query,
     ) {
-      return ref.watch(productionApiProvider).attendanceHistory(
-        month: query.month,
-        year: query.year,
-      );
+      return ref
+          .watch(productionApiProvider)
+          .attendanceHistory(month: query.month, year: query.year);
     });

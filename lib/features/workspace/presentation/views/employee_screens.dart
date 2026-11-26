@@ -1206,6 +1206,13 @@ class SalarySlipBreakdown extends StatelessWidget {
     ];
     final loan = _num(slip, const ['loanDeduction']);
     final lop = _num(slip, const ['unpaidLeaveDeduction', 'lop']);
+    final lateDeduction = _num(slip, const ['lateDeduction']);
+    final lateMinutes = _num(slip, const ['totalLateMinutes']);
+    final configuredLateRate = _num(slip, const ['lateRatePerMinute']);
+    final lateRate = configuredLateRate > 0 ? configuredLateRate : 1;
+    if (lateDeduction > 0) {
+      deductions.add(('Late Mark ($lateMinutes min × ₹${lateRate.toStringAsFixed(0)}/min)', lateDeduction));
+    }
     if (loan > 0) deductions.add(('Loan Deduction (EMI)', loan));
     if (lop > 0) deductions.add(('Loss of Pay (Unpaid Leave)', lop));
     final rows = earnings.length > deductions.length ? earnings.length : deductions.length;
