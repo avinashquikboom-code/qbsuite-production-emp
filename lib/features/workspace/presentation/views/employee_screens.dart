@@ -293,6 +293,20 @@ class _LeaveApplicationsScreenState extends ConsumerState<LeaveApplicationsScree
               Expanded(child: Text('${_day(row['fromDate'])} to ${_day(row['toDate'])} • ${days == 1 ? '1 day' : '$days days'}', style: AppTypography.inter(fontSize: 13, color: AppColors.textSecondary))),
             ],
           ),
+          if ('${row['appliedBySource'] ?? ''}' == 'ADMIN') ...[
+            const SizedBox(height: 6),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              decoration: BoxDecoration(
+                color: AppColors.primary.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Text(
+                'Applied by Admin${'${row['appliedByName'] ?? ''}'.isNotEmpty ? ': ${row['appliedByName']}' : ''}',
+                style: AppTypography.inter(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.primary),
+              ),
+            ),
+          ],
           if ('${row['appliedOn'] ?? ''}'.isNotEmpty) ...[
             const SizedBox(height: 4),
             Text('Applied: ${_day(row['appliedOn'])}', style: AppTypography.inter(fontSize: 12, color: AppColors.textSecondary)),
@@ -325,66 +339,219 @@ class _LeaveApplicationsScreenState extends ConsumerState<LeaveApplicationsScree
     var typeId = types.isEmpty ? 1 : int.tryParse('${types.first['leaveTypeId'] ?? types.first['id']}') ?? 1;
     var from = DateTime.now();
     var to = DateTime.now().add(const Duration(days: 1));
+    var durationType = 'FULL_DAY';
+    var halfDaySession = 'FIRST_HALF';
+    Map<String, dynamic>? preview;
+    var loadingPreview = false;
+    var previewInit = false;
     final reason = TextEditingController();
+
+    Future<void> refreshPreview(StateSetter setSheet) async {
+      setSheet(() => loadingPreview = true);
+      try {
+        final fromStr = from.toIso8601String().split('T').first;
+        final toStr = durationType == 'HALF_DAY'
+            ? fromStr
+            : to.toIso8601String().split('T').first;
+        final data = await ref.read(productionApiProvider).previewLeave({
+          'leaveTypeId': typeId,
+          'fromDate': fromStr,
+          'toDate': toStr,
+          'durationType': durationType,
+          if (durationType == 'HALF_DAY') 'halfDaySession': halfDaySession,
+        });
+        setSheet(() {
+          preview = data;
+          loadingPreview = false;
+        });
+      } catch (_) {
+        setSheet(() => loadingPreview = false);
+      }
+    }
+
     final saved = await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
       builder: (sheet) => StatefulBuilder(
-        builder: (context, setSheet) => Padding(
-          padding: EdgeInsets.fromLTRB(24, 24, 24, 24 + MediaQuery.viewInsetsOf(context).bottom),
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('Apply for Leave', style: AppTypography.inter(fontSize: 20, fontWeight: FontWeight.w700)),
-                const SizedBox(height: 16),
-                DropdownButtonFormField<int>(
-                  initialValue: typeId,
-                  decoration: const InputDecoration(labelText: 'Leave Type'),
-                  items: types.map((item) {
-                    final id = int.tryParse('${item['leaveTypeId'] ?? item['id']}') ?? typeId;
-                    return DropdownMenuItem(value: id, child: Text('${item['leaveType'] ?? item['name'] ?? 'Leave'}'));
-                  }).toList(),
-                  onChanged: (value) { if (value != null) setSheet(() => typeId = value); },
-                ),
-                const SizedBox(height: 14),
-                _dateButton(context, 'From Date', from, (value) => setSheet(() { from = value; if (to.isBefore(from)) to = from; })),
-                const SizedBox(height: 10),
-                _dateButton(context, 'To Date', to, (value) => setSheet(() => to = value)),
-                const SizedBox(height: 14),
-                TextField(controller: reason, maxLines: 3, decoration: const InputDecoration(labelText: 'Reason for Leave *')),
-                const SizedBox(height: 16),
-                SizedBox(
-                  width: double.infinity,
-                  height: 48,
-                  child: FilledButton(
-                    onPressed: () {
-                      if (reason.text.trim().isEmpty) {
-                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please enter a reason.')));
-                        return;
+        builder: (context, setSheet) {
+          if (!previewInit) {
+            previewInit = true;
+            Future.microtask(() => refreshPreview(setSheet));
+          }
+          return Padding(
+            padding: EdgeInsets.fromLTRB(24, 24, 24, 24 + MediaQuery.viewInsetsOf(context).bottom),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Apply for Leave', style: AppTypography.inter(fontSize: 20, fontWeight: FontWeight.w700)),
+                  const SizedBox(height: 16),
+                  DropdownButtonFormField<int>(
+                    initialValue: typeId,
+                    decoration: const InputDecoration(labelText: 'Leave Type'),
+                    items: types.map((item) {
+                      final id = int.tryParse('${item['leaveTypeId'] ?? item['id']}') ?? typeId;
+                      return DropdownMenuItem(value: id, child: Text('${item['leaveType'] ?? item['name'] ?? 'Leave'}'));
+                    }).toList(),
+                    onChanged: (value) {
+                      if (value != null) {
+                        setSheet(() => typeId = value);
+                        refreshPreview(setSheet);
                       }
-                      Navigator.pop(sheet, true);
                     },
-                    child: const Text('Submit Leave Request'),
                   ),
-                ),
-              ],
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: ChoiceChip(
+                          label: const Center(child: Text('Full Day')),
+                          selected: durationType == 'FULL_DAY',
+                          onSelected: (v) {
+                            if (!v) return;
+                            setSheet(() => durationType = 'FULL_DAY');
+                            refreshPreview(setSheet);
+                          },
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: ChoiceChip(
+                          label: const Center(child: Text('Half Day')),
+                          selected: durationType == 'HALF_DAY',
+                          onSelected: (v) {
+                            if (!v) return;
+                            setSheet(() {
+                              durationType = 'HALF_DAY';
+                              to = from;
+                            });
+                            refreshPreview(setSheet);
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                  if (durationType == 'HALF_DAY') ...[
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: ChoiceChip(
+                            label: const Center(child: Text('First Half')),
+                            selected: halfDaySession == 'FIRST_HALF',
+                            onSelected: (v) {
+                              if (!v) return;
+                              setSheet(() => halfDaySession = 'FIRST_HALF');
+                              refreshPreview(setSheet);
+                            },
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: ChoiceChip(
+                            label: const Center(child: Text('Second Half')),
+                            selected: halfDaySession == 'SECOND_HALF',
+                            onSelected: (v) {
+                              if (!v) return;
+                              setSheet(() => halfDaySession = 'SECOND_HALF');
+                              refreshPreview(setSheet);
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                  const SizedBox(height: 14),
+                  _dateButton(context, 'From Date', from, (value) {
+                    setSheet(() {
+                      from = value;
+                      if (durationType == 'HALF_DAY' || to.isBefore(from)) to = from;
+                    });
+                    refreshPreview(setSheet);
+                  }),
+                  if (durationType != 'HALF_DAY') ...[
+                    const SizedBox(height: 10),
+                    _dateButton(context, 'To Date', to, (value) {
+                      setSheet(() => to = value);
+                      refreshPreview(setSheet);
+                    }),
+                  ],
+                  if (loadingPreview || preview != null) ...[
+                    const SizedBox(height: 12),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: preview?['valid'] == false
+                            ? Colors.red.withValues(alpha: 0.08)
+                            : AppColors.surface,
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                          color: preview?['valid'] == false ? Colors.red.shade300 : AppColors.border,
+                        ),
+                      ),
+                      child: loadingPreview
+                          ? const Center(child: SizedBox(height: 18, width: 18, child: CircularProgressIndicator(strokeWidth: 2)))
+                          : Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text('Shift: ${preview?['shiftStartTime'] ?? '-'} – ${preview?['shiftEndTime'] ?? '-'}', style: AppTypography.inter(fontSize: 12, fontWeight: FontWeight.w600)),
+                                const SizedBox(height: 2),
+                                Text('Expected Punch-In: ${preview?['expectedPunchIn'] ?? '-'} • Punch-Out: ${preview?['expectedPunchOut'] ?? '-'}', style: AppTypography.inter(fontSize: 12, color: AppColors.textSecondary)),
+                                const SizedBox(height: 2),
+                                Text('Leave: ${preview?['leaveHours'] ?? 0}h • Working: ${preview?['workingHours'] ?? 0}h • Est. Deduction: ₹${preview?['estimatedSalaryDeduction'] ?? 0}', style: AppTypography.inter(fontSize: 12, color: AppColors.textSecondary)),
+                                if (preview?['valid'] == false && preview?['error'] != null)
+                                  Padding(
+                                    padding: const EdgeInsets.only(top: 6),
+                                    child: Text('${preview!['error']}', style: AppTypography.inter(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.red.shade700)),
+                                  ),
+                              ],
+                            ),
+                    ),
+                  ],
+                  const SizedBox(height: 14),
+                  TextField(controller: reason, maxLines: 3, decoration: const InputDecoration(labelText: 'Reason for Leave *')),
+                  const SizedBox(height: 16),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 48,
+                    child: FilledButton(
+                      onPressed: () {
+                        if (reason.text.trim().isEmpty) {
+                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please enter a reason.')));
+                          return;
+                        }
+                        if (preview?['valid'] == false) {
+                          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${preview?['error'] ?? 'Leave request violates policy rules.'}')));
+                          return;
+                        }
+                        Navigator.pop(sheet, true);
+                      },
+                      child: const Text('Submit Leave Request'),
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
-        ),
+          );
+        },
       ),
     );
     final text = reason.text.trim();
     reason.dispose();
     if (saved != true) return;
     try {
+      final fromStr = from.toIso8601String().split('T').first;
+      final toStr = durationType == 'HALF_DAY' ? fromStr : to.toIso8601String().split('T').first;
       await ref.read(productionApiProvider).applyLeave({
         'leaveTypeId': typeId,
-        'fromDate': from.toIso8601String().split('T').first,
-        'toDate': to.toIso8601String().split('T').first,
-        'days': to.difference(from).inDays + 1,
+        'fromDate': fromStr,
+        'toDate': toStr,
+        'durationType': durationType,
+        if (durationType == 'HALF_DAY') 'halfDaySession': halfDaySession,
+        'days': durationType == 'HALF_DAY' ? 0.5 : (to.difference(from).inDays + 1),
         'reason': text,
       });
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Leave application submitted (Status: PENDING).')));

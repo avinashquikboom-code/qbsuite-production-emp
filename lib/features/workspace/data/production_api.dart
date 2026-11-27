@@ -167,6 +167,15 @@ class ProductionApi {
   Future<List<Map<String, dynamic>>> leaveRequests() =>
       _list('/leaves/requests', query: {'limit': 50});
 
+  Future<Map<String, dynamic>> previewLeave(Map<String, dynamic> query) async {
+    final response = await _dio.get('/leaves/preview', queryParameters: query);
+    final res = response.data;
+    if (res is Map && res['data'] is Map) {
+      return Map<String, dynamic>.from(res['data'] as Map);
+    }
+    return res is Map ? Map<String, dynamic>.from(res) : <String, dynamic>{};
+  }
+
   Future<void> applyLeave(Map<String, dynamic> body) =>
       _send('/leaves/requests', body: body);
 
